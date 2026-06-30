@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ShoppingCart, Store, User, LogOut, MapPin } from "lucide-react";
+import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { isLoggedIn, clearToken } from "@/lib/auth";
+import { isLoggedIn, clearToken, isStaff } from "@/lib/auth";
+import { apiClient } from "@/lib/api";
 
 const navLinks = [{ href: "/products", label: "Sản phẩm" }];
 
@@ -17,11 +18,18 @@ export function SiteHeader() {
   // mounted: tránh hydration mismatch vì trạng thái login đọc từ localStorage (chỉ có ở client)
   const [mounted, setMounted] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [staff, setStaff] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     setLoggedIn(isLoggedIn());
+    setStaff(isStaff());
+    // cập nhật số lượng giỏ mỗi khi đổi route (vd vừa thêm hàng xong điều hướng)
+    apiClient<{ totalQuantity: number }>("/api/cart")
+      .then((r) => setCartCount(r.data.totalQuantity ?? 0))
+      .catch(() => {});
   }, [pathname]); // đổi route thì kiểm tra lại (vd vừa login xong)
 
   useEffect(() => {
@@ -67,20 +75,43 @@ export function SiteHeader() {
               {l.label}
             </Link>
           ))}
+          {mounted && staff && (
+            <Link
+              href="/admin/orders"
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                pathname.startsWith("/admin") ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              <LayoutDashboard className="size-4" /> Quản trị
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
           <Link
             href="/cart"
             aria-label="Giỏ hàng"
-            className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative")}
           >
             <ShoppingCart className="size-5" />
+            {mounted && cartCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-primary px-1 text-[11px] font-semibold leading-[18px] text-primary-foreground">
+                {cartCount}
+              </span>
+            )}
           </Link>
 
           {/* Chỉ render trạng thái auth sau khi mounted để khớp server/client */}
           {mounted && loggedIn ? (
             <>
+              <Link
+                href="/account/orders"
+                aria-label="Đơn của tôi"
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+              >
+                <Package className="size-5" />
+              </Link>
               <Link
                 href="/account/addresses"
                 aria-label="Sổ địa chỉ"

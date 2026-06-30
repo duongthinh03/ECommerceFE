@@ -25,3 +25,35 @@ export function clearToken() {
 export function isLoggedIn(): boolean {
   return !!getToken();
 }
+
+// .NET nhét role vào claim URI này (ClaimTypes.Role)
+const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+
+// Giải payload JWT phía client (chỉ để hiện UI — KHÔNG phải xác thực; BE mới là chốt chặn).
+function decodeJwt(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split(".")[1];
+    const json = decodeURIComponent(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+export function getUserRole(): string | null {
+  const token = getToken();
+  if (!token) return null;
+  const p = decodeJwt(token);
+  return (p?.[ROLE_CLAIM] as string) ?? (p?.role as string) ?? null;
+}
+
+// Có quyền vào khu admin? (BE cho Admin/Manager/Staff)
+export function isStaff(): boolean {
+  const r = getUserRole();
+  return r === "Admin" || r === "Manager" || r === "Staff";
+}

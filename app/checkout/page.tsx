@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 
-interface OrderResult { orderCode: string; finalAmount: number; status: string; }
+interface OrderResult { orderCode: string; finalAmount: number; discountAmount: number; status: string; }
 
 const manualFields = [
   { name: "shipRecipient", label: "Người nhận", placeholder: "Nguyễn Văn A" },
@@ -33,6 +33,7 @@ export default function CheckoutPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [useNew, setUseNew] = useState(false); // đang nhập địa chỉ mới (không chọn từ sổ)
   const [saveNew, setSaveNew] = useState(true);
+  const [couponCode, setCouponCode] = useState("");
 
   const [form, setForm] = useState({
     shipRecipient: "", shipPhone: "", shipProvince: "", shipDistrict: "",
@@ -102,7 +103,7 @@ export default function CheckoutPage() {
 
       const res = await apiClient<OrderResult>("/api/orders", {
         method: "POST",
-        body: JSON.stringify({ ...ship, note: form.note, paymentMethod: "COD" }),
+        body: JSON.stringify({ ...ship, note: form.note, paymentMethod: "COD", couponCode: couponCode || undefined }),
       });
       setOrder(res.data);
     } catch (e) {
@@ -122,6 +123,9 @@ export default function CheckoutPage() {
             <h1 className="text-2xl font-bold">Đặt hàng thành công!</h1>
             <div className="text-muted-foreground">
               <p>Mã đơn: <b className="text-foreground">{order.orderCode}</b></p>
+              {order.discountAmount > 0 && (
+                <p>Giảm giá: <b className="text-success">- {formatVND(order.discountAmount)}</b></p>
+              )}
               <p>Tổng tiền: <b className="text-foreground">{formatVND(order.finalAmount)}</b></p>
               <p>Trạng thái: {order.status} · Thanh toán khi nhận (COD)</p>
             </div>
@@ -235,6 +239,16 @@ export default function CheckoutPage() {
             <div className="space-y-1.5">
               <Label htmlFor="note">Ghi chú (tùy chọn)</Label>
               <Textarea id="note" name="note" placeholder="Giao giờ hành chính..." onChange={update} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="couponCode">Mã giảm giá (tùy chọn)</Label>
+              <Input
+                id="couponCode"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="Nhập mã coupon"
+              />
             </div>
 
             <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm">

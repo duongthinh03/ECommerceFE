@@ -11,6 +11,34 @@ export interface Product {
   isActive: boolean;
 }
 
+export interface OrderItem {
+  productId: number;
+  variantId: number;
+  productName: string;
+  sku: string;
+  quantity: number;
+  price: number;
+  finalPrice: number;
+}
+
+export interface Order {
+  id: number;
+  orderCode: string;
+  status: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  totalAmount: number;
+  shippingFee: number;
+  discountAmount: number;
+  finalAmount: number;
+  shipRecipient: string;
+  shipPhone: string;
+  shipAddress: string;
+  note?: string;
+  createdAt: string;
+  items: OrderItem[];
+}
+
 export interface Address {
   id: number;
   fullName: string;

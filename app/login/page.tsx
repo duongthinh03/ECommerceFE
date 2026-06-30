@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { setTokens } from "@/lib/auth";
@@ -98,6 +99,12 @@ function LoginForm() {
             {loading ? "Đang đăng nhập..." : "Đăng nhập"}
           </Button>
         </form>
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          Chưa có tài khoản?{" "}
+          <Link href="/register" className="font-medium text-primary hover:underline">
+            Đăng ký
+          </Link>
+        </p>
       </CardContent>
     </Card>
   );
