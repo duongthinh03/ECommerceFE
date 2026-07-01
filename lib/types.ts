@@ -5,9 +5,34 @@ export interface Product {
   description?: string;       // ? = optional (có thể null)
   categoryId: number;
   categoryName?: string;
+  brandId?: number | null;
   brandName?: string;
   displayPrice: number;
   thumbnail?: string;
+  isActive: boolean;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  parentId?: number | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface Coupon {
+  id: number;
+  code: string;
+  discountType: string;          // "Percent" | "Fixed"
+  discountValue: number;
+  maxDiscountAmount?: number | null;
+  minOrderAmount: number;
+  usageLimit?: number | null;
+  usedCount: number;
+  userUsageLimit?: number | null;
+  startsAt?: string | null;
+  expiredAt?: string | null;
   isActive: boolean;
 }
 
@@ -35,6 +60,7 @@ export interface Order {
   shipPhone: string;
   shipAddress: string;
   note?: string;
+  paymentQrUrl?: string | null;   // đơn SePay chưa thanh toán → có QR
   createdAt: string;
   items: OrderItem[];
 }

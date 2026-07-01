@@ -82,15 +82,27 @@ export function SiteHeader() {
             </Link>
           ))}
           {mounted && staff && (
-            <Link
-              href="/admin/orders"
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                pathname.startsWith("/admin") ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              <LayoutDashboard className="size-4" /> Quản trị
-            </Link>
+            <>
+              <span className="ml-1 hidden items-center gap-1 text-muted-foreground/60 lg:flex">
+                <LayoutDashboard className="size-4" />
+              </span>
+              {[
+                { href: "/admin/orders", label: "Đơn" },
+                { href: "/admin/products", label: "Sản phẩm" },
+                { href: "/admin/coupons", label: "Coupon" },
+              ].map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={cn(
+                    "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                    pathname.startsWith(l.href) ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </>
           )}
         </nav>
 

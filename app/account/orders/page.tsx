@@ -52,7 +52,8 @@ export default function MyOrdersPage() {
       ) : (
         <div className="space-y-3">
           {orders.map((o) => (
-            <Card key={o.id} className="p-4">
+            <Link key={o.id} href={`/account/orders/${o.id}`} className="block">
+            <Card className="p-4 transition-shadow hover:shadow-lift">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-semibold">{o.orderCode}</span>
                 <div className="flex items-center gap-2">
@@ -74,6 +75,7 @@ export default function MyOrdersPage() {
                 <span className="shrink-0 font-semibold text-primary">{formatVND(o.finalAmount)}</span>
               </div>
             </Card>
+            </Link>
           ))}
         </div>
       )}
