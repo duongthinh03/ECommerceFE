@@ -23,7 +23,7 @@ export default function EditProductPage() {
   const [variants, setVariants] = useState<Variant[]>([]);
   const [denied, setDenied] = useState(false);
   const [saved, setSaved] = useState("");
-  const [newV, setNewV] = useState({ sku: "", price: 0, stock: 0 });
+  const [newV, setNewV] = useState({ sku: "", optionName: "", price: 0, stock: 0 });
   const [addErr, setAddErr] = useState("");
 
   async function loadVariants() {
@@ -58,9 +58,9 @@ export default function EditProductPage() {
     try {
       await apiClient(`/api/products/${id}/variants`, {
         method: "POST",
-        body: JSON.stringify({ sku: newV.sku, price: newV.price, stock: newV.stock, isActive: true }),
+        body: JSON.stringify({ sku: newV.sku, optionName: newV.optionName || null, price: newV.price, stock: newV.stock, isActive: true }),
       });
-      setNewV({ sku: "", price: 0, stock: 0 });
+      setNewV({ sku: "", optionName: "", price: 0, stock: 0 });
       await loadVariants();
     } catch (e) {
       setAddErr((e as Error).message);
@@ -126,9 +126,9 @@ export default function EditProductPage() {
               {variants.map((vr) => (
                 <div key={vr.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-2 text-sm">
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{vr.sku}</p>
+                    <p className="truncate font-medium">{vr.optionName || vr.sku}</p>
                     <p className="text-muted-foreground">
-                      {formatVND(vr.price)} · Kho {vr.stock}
+                      {vr.optionName ? `${vr.sku} · ` : ""}{formatVND(vr.price)} · Kho {vr.stock}
                       {!vr.isActive && <Badge variant="secondary" className="ml-1">Ẩn</Badge>}
                     </p>
                   </div>
@@ -141,6 +141,7 @@ export default function EditProductPage() {
               <form onSubmit={addVariant} className="space-y-2 border-t border-border pt-3">
                 <Label className="text-xs text-muted-foreground">Thêm biến thể</Label>
                 <Input placeholder="SKU" value={newV.sku} required onChange={(e) => setNewV({ ...newV, sku: e.target.value })} />
+                <Input placeholder={`Nhãn (vd "3U", "Đỏ / 42")`} value={newV.optionName} onChange={(e) => setNewV({ ...newV, optionName: e.target.value })} />
                 <div className="grid grid-cols-2 gap-2">
                   <Input type="number" min={0} placeholder="Giá" value={newV.price} required onChange={(e) => setNewV({ ...newV, price: Number(e.target.value) })} />
                   <Input type="number" min={0} placeholder="Kho" value={newV.stock} required onChange={(e) => setNewV({ ...newV, stock: Number(e.target.value) })} />

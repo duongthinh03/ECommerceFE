@@ -83,6 +83,7 @@ export interface Variant {
   id: number;
   productId: number;
   sku: string;
+  optionName?: string | null;   // nhãn hiển thị (vd "3U") — không có thì hiện SKU
   price: number;
   compareAtPrice?: number;
   stock: number;

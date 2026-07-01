@@ -79,7 +79,7 @@ export default function VariantSelector({ variants }: { variants: Variant[] }) {
                 : "border-input hover:bg-accent"
             )}
           >
-            {v.sku}
+            {v.optionName || v.sku}
           </button>
         ))}
       </div>
