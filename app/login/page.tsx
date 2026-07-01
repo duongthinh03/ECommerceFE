@@ -133,7 +133,7 @@ function LoginForm() {
               <Input
                 id="twofa"
                 inputMode="numeric"
-                placeholder="000000"
+                placeholder="Mã 6 số từ app Authenticator"
                 value={twoFACode}
                 onChange={(e) => setTwoFACode(e.target.value)}
                 className="text-center tracking-widest"
