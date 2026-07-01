@@ -1,55 +1,42 @@
-const TOKEN_KEY = "access_token";
-const REFRESH_KEY = "refresh_token";
+// Token (access + refresh) nằm trong cookie httpOnly do BE set — JS KHÔNG đọc được (chống XSS).
+// Client chỉ giữ thông tin user (không nhạy cảm) trong localStorage để hiển thị UI + gate menu.
+// BE mới là chốt chặn thật (kiểm role từ JWT trong cookie).
 
-export function getToken(): string | null {
+export interface AuthUser {
+  id: number;
+  email: string;
+  fullName: string;
+  role: string;
+}
+
+const USER_KEY = "auth_user";
+
+export function getUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function getRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_KEY);
-}
-
-// Lưu cả 2 token sau login/refresh (refresh token để tự gia hạn khi access token hết hạn)
-export function setTokens(accessToken: string, refreshToken: string) {
-  localStorage.setItem(TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_KEY, refreshToken);
-}
-
-export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-}
-
-export function isLoggedIn(): boolean {
-  return !!getToken();
-}
-
-// .NET nhét role vào claim URI này (ClaimTypes.Role)
-const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
-
-// Giải payload JWT phía client (chỉ để hiện UI — KHÔNG phải xác thực; BE mới là chốt chặn).
-function decodeJwt(token: string): Record<string, unknown> | null {
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) return null;
   try {
-    const payload = token.split(".")[1];
-    const json = decodeURIComponent(
-      atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    return JSON.parse(json);
+    return JSON.parse(raw) as AuthUser;
   } catch {
     return null;
   }
 }
 
+export function setUser(user: AuthUser) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+// Xóa dấu vết đăng nhập phía client (cookie httpOnly do BE /logout xóa).
+export function clearToken() {
+  localStorage.removeItem(USER_KEY);
+}
+
+export function isLoggedIn(): boolean {
+  return !!getUser();
+}
+
 export function getUserRole(): string | null {
-  const token = getToken();
-  if (!token) return null;
-  const p = decodeJwt(token);
-  return (p?.[ROLE_CLAIM] as string) ?? (p?.role as string) ?? null;
+  return getUser()?.role ?? null;
 }
 
 // Có quyền vào khu admin? (BE cho Admin/Manager/Staff)

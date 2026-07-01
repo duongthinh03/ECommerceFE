@@ -1,5 +1,5 @@
 import { getSessionId } from "./session";
-import { getToken, getRefreshToken, setTokens, clearToken } from "./auth";
+import { clearToken } from "./auth";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5232";
 
@@ -17,28 +17,24 @@ export async function apiGet<T>(path: string): Promise<ApiResponse<T>> {
   return res.json();
 }
 
-// Single-flight: nhiều request cùng dính 401 chỉ refresh MỘT lần (vì refresh token rotate,
+// Single-flight: nhiều request cùng dính 401 chỉ refresh MỘT lần (refresh token rotate,
 // gọi 2 lần song song thì lần sau dùng token đã bị thu hồi → fail oan).
-let refreshPromise: Promise<string | null> | null = null;
+// Refresh token nằm trong cookie httpOnly → chỉ cần credentials:"include", BE tự đọc + set cookie mới.
+let refreshPromise: Promise<boolean> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
-
+async function refreshAccessToken(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
         const res = await fetch(`${API_URL}/api/auth/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
+          credentials: "include",
+          body: "{}",
         });
-        if (!res.ok) return null;
-        const json = (await res.json()) as ApiResponse<{ accessToken: string; refreshToken: string }>;
-        setTokens(json.data.accessToken, json.data.refreshToken); // lưu cặp token mới (đã rotate)
-        return json.data.accessToken;
+        return res.ok; // cookie access/refresh mới do BE tự set
       } catch {
-        return null;
+        return false;
       } finally {
         refreshPromise = null;
       }
@@ -52,27 +48,26 @@ function logoutAndRedirect() {
   if (typeof window !== "undefined") window.location.href = "/login";
 }
 
-// Gọi API phía CLIENT (browser) — tự gửi X-Session-Id + Bearer token, tự refresh khi 401.
+// Gọi API phía CLIENT (browser) — cookie httpOnly tự gửi kèm (credentials:"include"), tự refresh khi 401.
 export async function apiClient<T>(
   path: string,
   options: RequestInit = {},
   retried = false
 ): Promise<ApiResponse<T>> {
-  const token = getToken();
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: "include", // gửi/nhận cookie httpOnly (access + refresh token)
     headers: {
       "Content-Type": "application/json",
       "X-Session-Id": getSessionId(),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers ?? {}),
     },
   });
 
-  // Access token hết hạn → thử refresh đúng 1 lần rồi gọi lại request cũ
-  if (res.status === 401 && !retried && getRefreshToken()) {
-    const newToken = await refreshAccessToken();
-    if (newToken) return apiClient<T>(path, options, true); // retry với token mới
+  // Access token hết hạn → thử refresh (bằng cookie) đúng 1 lần rồi gọi lại request cũ
+  if (res.status === 401 && !retried) {
+    const ok = await refreshAccessToken();
+    if (ok) return apiClient<T>(path, options, true); // retry với cookie mới
     // refresh cũng fail = phiên thực sự hết → đăng xuất
     logoutAndRedirect();
     throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");

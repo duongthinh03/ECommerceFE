@@ -39,7 +39,13 @@ export function SiteHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  function logout() {
+  async function logout() {
+    // gọi BE để xóa cookie httpOnly (JS không tự xóa được), rồi xóa dấu vết client
+    try {
+      await apiClient("/api/auth/logout", { method: "POST" });
+    } catch {
+      /* lỗi mạng cũng vẫn dọn phía client */
+    }
     clearToken();
     setLoggedIn(false);
     router.push("/");

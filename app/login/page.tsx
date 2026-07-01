@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { apiClient } from "@/lib/api";
-import { setTokens } from "@/lib/auth";
+import { setUser, type AuthUser } from "@/lib/auth";
 import { getSessionId } from "@/lib/session";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,12 +34,12 @@ function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      // 1) đăng nhập → lấy token
-      const res = await apiClient<{ accessToken: string; refreshToken: string }>("/api/auth/login", {
+      // 1) đăng nhập → BE set cookie httpOnly; body trả user để lưu hiển thị UI
+      const res = await apiClient<{ user: AuthUser }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      setTokens(res.data.accessToken, res.data.refreshToken);
+      setUser(res.data.user);
 
       // 2) merge giỏ guest → giỏ user
       try {
