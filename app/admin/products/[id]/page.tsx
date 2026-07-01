@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ProductForm, type ProductFormValues } from "@/components/admin/product-form";
+import { ProductGallery } from "@/components/admin/product-gallery";
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -99,7 +100,7 @@ export default function EditProductPage() {
       </Link>
 
       <div className="grid gap-6 md:grid-cols-5">
-        <div className="md:col-span-3">
+        <div className="space-y-6 md:col-span-3">
           <Card>
             <CardHeader><CardTitle>Sửa sản phẩm</CardTitle></CardHeader>
             <CardContent>
@@ -113,6 +114,13 @@ export default function EditProductPage() {
                 submitLabel="Lưu thay đổi"
               />
               {saved && <p className="mt-3 text-sm text-success">{saved}</p>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Thư viện ảnh (ảnh phụ)</CardTitle></CardHeader>
+            <CardContent>
+              <ProductGallery productId={id} />
             </CardContent>
           </Card>
         </div>

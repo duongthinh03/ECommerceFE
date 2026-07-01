@@ -79,6 +79,13 @@ export interface Address {
 // Payload tạo/sửa địa chỉ (không gồm id)
 export type AddressInput = Omit<Address, "id">;
 
+export interface ProductImage {
+  id: number;
+  imageUrl: string;
+  isMain: boolean;
+  sortOrder: number;
+}
+
 export interface Variant {
   id: number;
   productId: number;

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ChevronLeft, ImageIcon } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import { Product, Variant } from "@/lib/types";
+import { Product, Variant, ProductImage } from "@/lib/types";
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
+import { ProductImageGallery } from "@/components/product-image-gallery";
 import VariantSelector from "./VariantSelector";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -21,6 +22,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   const product = (await apiGet<Product>(`/api/products/${id}`)).data;
   const variants = (await apiGet<Variant[]>(`/api/products/${id}/variants`)).data;
+  const images = await apiGet<ProductImage[]>(`/api/products/${id}/images`).then((r) => r.data).catch(() => []);
 
   return (
     <Container className="py-8">
@@ -32,15 +34,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       </Link>
 
       <div className="grid gap-8 md:grid-cols-2">
-        {/* Ảnh sản phẩm */}
-        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
-          {product.thumbnail ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.thumbnail} alt={product.name} className="h-full w-full object-cover" />
-          ) : (
-            <ImageIcon className="size-16 text-muted-foreground/40" />
-          )}
-        </div>
+        {/* Ảnh sản phẩm — gallery (bìa + ảnh phụ) */}
+        <ProductImageGallery cover={product.thumbnail} images={images.map((i) => i.imageUrl)} />
 
         {/* Thông tin + chọn variant */}
         <div>
