@@ -65,24 +65,29 @@ export default function VariantSelector({ variants }: { variants: Variant[] }) {
 
   return (
     <div className="mt-6 border-t border-border pt-6">
-      <p className="mb-2 text-sm font-medium">Chọn phiên bản</p>
-      <div className="flex flex-wrap gap-2">
-        {variants.map((v) => (
-          <button
-            key={v.id}
-            onClick={() => pickVariant(v)}
-            disabled={v.stock <= 0}
-            className={cn(
-              "rounded-md border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-              selected?.id === v.id
-                ? "border-primary bg-primary/5 text-primary"
-                : "border-input hover:bg-accent"
-            )}
-          >
-            {v.optionName || v.sku}
-          </button>
-        ))}
-      </div>
+      {/* Chỉ hiện chọn phiên bản khi có >1 variant (1 variant thì auto chọn, khỏi nút thừa) */}
+      {variants.length > 1 && (
+        <>
+          <p className="mb-2 text-sm font-medium">Chọn phiên bản</p>
+          <div className="flex flex-wrap gap-2">
+            {variants.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => pickVariant(v)}
+                disabled={v.stock <= 0}
+                className={cn(
+                  "rounded-md border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+                  selected?.id === v.id
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-input hover:bg-accent"
+                )}
+              >
+                {v.optionName || v.sku}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {selected && (
         <div className="mt-5">
