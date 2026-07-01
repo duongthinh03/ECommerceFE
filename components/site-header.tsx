@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package } from "lucide-react";
+import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { isLoggedIn, clearToken, isStaff } from "@/lib/auth";
+import { isLoggedIn, clearToken, isStaff, getUser } from "@/lib/auth";
 import { apiClient } from "@/lib/api";
+import { Category } from "@/lib/types";
 
 const navLinks = [{ href: "/products", label: "Sản phẩm" }];
 
@@ -21,16 +22,24 @@ export function SiteHeader() {
   const [staff, setStaff] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+  const [cats, setCats] = useState<Category[]>([]);
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
     setMounted(true);
     setLoggedIn(isLoggedIn());
     setStaff(isStaff());
+    setUserName(getUser()?.fullName ?? "");
     // cập nhật số lượng giỏ mỗi khi đổi route (vd vừa thêm hàng xong điều hướng)
     apiClient<{ totalQuantity: number }>("/api/cart")
       .then((r) => setCartCount(r.data.totalQuantity ?? 0))
       .catch(() => {});
   }, [pathname]); // đổi route thì kiểm tra lại (vd vừa login xong)
+
+  // nạp danh mục 1 lần cho dropdown
+  useEffect(() => {
+    apiClient<Category[]>("/api/categories").then((r) => setCats(r.data)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -69,6 +78,27 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-1 sm:flex">
+          {cats.length > 0 && (
+            <div className="group relative">
+              <button className="flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+                Danh mục <ChevronDown className="size-4" />
+              </button>
+              {/* pt-2 làm cầu hover (không bị hụt khoảng trống) */}
+              <div className="invisible absolute left-0 top-full z-50 pt-2 opacity-0 transition-all group-hover:visible group-hover:opacity-100">
+                <div className="min-w-52 rounded-lg border border-border bg-background p-1 shadow-lift">
+                  {cats.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/products?category=${c.id}`}
+                      className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
+                    >
+                      {c.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           {navLinks.map((l) => (
             <Link
               key={l.href}
@@ -111,6 +141,11 @@ export function SiteHeader() {
           {/* Chỉ render trạng thái auth sau khi mounted để khớp server/client */}
           {mounted && loggedIn ? (
             <>
+              {userName && (
+                <span className="mr-1 hidden text-sm text-muted-foreground lg:inline">
+                  Xin chào, <b className="text-foreground">{userName.trim().split(" ").pop()}</b>
+                </span>
+              )}
               <Link
                 href="/account/orders"
                 aria-label="Đơn của tôi"
