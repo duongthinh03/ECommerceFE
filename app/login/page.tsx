@@ -7,11 +7,14 @@ import { AlertCircle } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { isLoggedIn, setUser, type AuthUser } from "@/lib/auth";
 import { getSessionId } from "@/lib/session";
+import { GoogleOAuthProvider, GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 function LoginForm() {
   const router = useRouter();
@@ -73,6 +76,27 @@ function LoginForm() {
     }
   }
 
+  async function handleGoogle(cred: CredentialResponse) {
+    if (!cred.credential) return;
+    setError("");
+    setLoading(true);
+    try {
+      const res = await apiClient<{ user: AuthUser }>("/api/auth/google", {
+        method: "POST",
+        body: JSON.stringify({ idToken: cred.credential }),
+      });
+      setUser(res.data.user);
+      try {
+        await apiClient("/api/cart/merge", { method: "POST", body: JSON.stringify({ sessionId: getSessionId() }) });
+      } catch { /* giỏ rỗng kệ */ }
+      router.push(target);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
@@ -126,6 +150,20 @@ function LoginForm() {
             {loading ? "Đang đăng nhập..." : twoFANeeded ? "Xác nhận" : "Đăng nhập"}
           </Button>
         </form>
+
+        {GOOGLE_CLIENT_ID && (
+          <>
+            <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-border" /> hoặc <span className="h-px flex-1 bg-border" />
+            </div>
+            <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+              <div className="flex justify-center">
+                <GoogleLogin onSuccess={handleGoogle} onError={() => setError("Đăng nhập Google thất bại")} />
+              </div>
+            </GoogleOAuthProvider>
+          </>
+        )}
+
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Chưa có tài khoản?{" "}
           <Link href="/register" className="font-medium text-primary hover:underline">
