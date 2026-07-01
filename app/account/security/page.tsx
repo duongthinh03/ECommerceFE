@@ -19,6 +19,7 @@ export default function SecurityPage() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
 
   async function loadStatus() {
     const r = await apiClient<{ enabled: boolean }>("/api/auth/2fa/status");
@@ -42,8 +43,8 @@ export default function SecurityPage() {
   });
 
   const enable = () => run(async () => {
-    await apiClient("/api/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) });
-    setSetup(null); setCode(""); setMsg({ type: "ok", text: "Đã bật xác thực 2 lớp" });
+    const r = await apiClient<{ recoveryCodes: string[] }>("/api/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) });
+    setSetup(null); setCode(""); setRecoveryCodes(r.data.recoveryCodes); setMsg({ type: "ok", text: "Đã bật xác thực 2 lớp" });
     await loadStatus();
   });
 
@@ -76,6 +77,22 @@ export default function SecurityPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Recovery codes — hiện 1 lần sau khi bật, buộc user lưu */}
+          {recoveryCodes && (
+            <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-4">
+              <p className="font-semibold text-foreground">🔑 Mã khôi phục — LƯU LẠI NGAY</p>
+              <p className="text-sm text-muted-foreground">
+                Mỗi mã dùng <b>1 lần</b> khi mất app Authenticator. Cất nơi an toàn — <b>sẽ không hiện lại</b>.
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 font-mono text-sm">
+                {recoveryCodes.map((c) => (
+                  <code key={c} className="rounded bg-background px-2 py-1 text-center">{c}</code>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setRecoveryCodes(null)}>Tôi đã lưu</Button>
+            </div>
+          )}
+
           {!enabled && !setup && (
             <Button onClick={startSetup} disabled={busy}>{busy ? "..." : "Bật 2FA"}</Button>
           )}
