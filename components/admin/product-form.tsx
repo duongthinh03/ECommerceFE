@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle } from "lucide-react";
-import { apiClient } from "@/lib/api";
+import { AlertCircle, Upload } from "lucide-react";
+import { apiClient, API_URL } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { Category } from "@/lib/types";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 export interface ProductFormValues {
   name: string;
@@ -41,6 +42,7 @@ export function ProductForm({
     isActive: initial?.isActive ?? true,
   });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -54,6 +56,27 @@ export function ProductForm({
 
   function setName(name: string) {
     setV((prev) => ({ ...prev, name, slug: autoSlug ? slugify(name) : prev.slug }));
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      // upload là multipart nên gọi fetch trực tiếp (apiClient ép JSON)
+      const res = await fetch(`${API_URL}/api/upload`, { method: "POST", credentials: "include", body: fd });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message ?? "Tải ảnh thất bại");
+      setV((prev) => ({ ...prev, thumbnail: json.data.url }));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setUploading(false);
+      e.target.value = "";   // reset để chọn lại cùng file vẫn được
+    }
   }
 
   async function submit(e: React.FormEvent) {
@@ -112,8 +135,23 @@ export function ProductForm({
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="thumbnail">Ảnh (URL)</Label>
-        <Input id="thumbnail" value={v.thumbnail} onChange={(e) => setV({ ...v, thumbnail: e.target.value })} placeholder="https://..." />
+        <Label htmlFor="thumbnail">Ảnh sản phẩm</Label>
+        {v.thumbnail && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={v.thumbnail} alt="preview" className="size-24 rounded-lg border object-cover" />
+        )}
+        <div className="flex gap-2">
+          <Input
+            id="thumbnail"
+            value={v.thumbnail}
+            onChange={(e) => setV({ ...v, thumbnail: e.target.value })}
+            placeholder="Dán URL hoặc tải ảnh lên →"
+          />
+          <label className={cn(buttonVariants({ variant: "outline" }), "shrink-0 cursor-pointer gap-1.5")}>
+            <Upload className="size-4" /> {uploading ? "..." : "Tải lên"}
+            <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+          </label>
+        </div>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="description">Mô tả</Label>
