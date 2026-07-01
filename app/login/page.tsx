@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { apiClient } from "@/lib/api";
-import { setUser, type AuthUser } from "@/lib/auth";
+import { isLoggedIn, setUser, type AuthUser } from "@/lib/auth";
 import { getSessionId } from "@/lib/session";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -28,6 +28,11 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Đã đăng nhập rồi mà vào /login → rời đi (về đích redirect hoặc home)
+  useEffect(() => {
+    if (isLoggedIn()) router.replace(target);
+  }, [router, target]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault(); // chặn form reload trang

@@ -58,6 +58,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [paid, setPaid] = useState(false);
+  const [ready, setReady] = useState(false); // đã xác nhận giỏ có hàng → mới cho render form
 
   // chưa login thì về trang login (checkout cần token) — rồi quay lại đây
   useEffect(() => {
@@ -65,6 +66,13 @@ export default function CheckoutPage() {
       router.push("/login?redirect=/checkout");
       return;
     }
+    // Giỏ rỗng (vd vừa đặt đơn xong rồi reload) → về trang giỏ, không cho ở lại checkout
+    apiClient<{ items: unknown[] }>("/api/cart")
+      .then((res) => {
+        if (!res.data.items || res.data.items.length === 0) router.replace("/cart");
+        else setReady(true);
+      })
+      .catch(() => router.replace("/cart"));
     // nạp sổ địa chỉ: có thì chọn cái mặc định, không có thì mở form nhập mới
     apiClient<Address[]>("/api/addresses")
       .then((res) => {
@@ -198,6 +206,15 @@ export default function CheckoutPage() {
             </Link>
           </CardContent>
         </Card>
+      </Container>
+    );
+  }
+
+  // đang kiểm tra giỏ (chưa biết rỗng hay không) → chưa render form, tránh nháy rồi redirect
+  if (!ready) {
+    return (
+      <Container className="flex items-center justify-center gap-2 py-24 text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" /> Đang tải...
       </Container>
     );
   }

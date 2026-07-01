@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { apiClient } from "@/lib/api";
+import { isLoggedIn } from "@/lib/auth";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,11 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ fullName: "", email: "", phone: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Đã đăng nhập rồi mà vào /register → về trang chủ
+  useEffect(() => {
+    if (isLoggedIn()) router.replace("/");
+  }, [router]);
 
   function update(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
