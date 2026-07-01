@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package, ChevronDown } from "lucide-react";
+import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package, ChevronDown, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -159,6 +159,13 @@ export function SiteHeader() {
                 className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
               >
                 <MapPin className="size-5" />
+              </Link>
+              <Link
+                href="/account/security"
+                aria-label="Bảo mật"
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+              >
+                <ShieldCheck className="size-5" />
               </Link>
               <button
                 onClick={logout}

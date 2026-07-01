@@ -28,6 +28,8 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [twoFANeeded, setTwoFANeeded] = useState(false);
+  const [twoFACode, setTwoFACode] = useState("");
 
   // Đã đăng nhập rồi mà vào /login → rời đi (về đích redirect hoặc home)
   useEffect(() => {
@@ -40,10 +42,16 @@ function LoginForm() {
     setLoading(true);
     try {
       // 1) đăng nhập → BE set cookie httpOnly; body trả user để lưu hiển thị UI
-      const res = await apiClient<{ user: AuthUser }>("/api/auth/login", {
+      const res = await apiClient<{ user: AuthUser; requires2FA: boolean }>("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, twoFactorCode: twoFACode || undefined }),
       });
+      // bật 2FA → BE báo cần mã, hiện ô nhập rồi submit lại
+      if (res.data.requires2FA) {
+        setTwoFANeeded(true);
+        setLoading(false);
+        return;
+      }
       setUser(res.data.user);
 
       // 2) merge giỏ guest → giỏ user
@@ -95,13 +103,27 @@ function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+          {twoFANeeded && (
+            <div className="space-y-1.5">
+              <Label htmlFor="twofa">Mã xác thực 2 lớp</Label>
+              <Input
+                id="twofa"
+                inputMode="numeric"
+                placeholder="Mã 6 số từ app Authenticator"
+                value={twoFACode}
+                onChange={(e) => setTwoFACode(e.target.value)}
+                className="text-center tracking-widest"
+                autoFocus
+              />
+            </div>
+          )}
           {error && (
             <p className="flex items-center gap-2 text-sm text-destructive">
               <AlertCircle className="size-4" /> {error}
             </p>
           )}
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+            {loading ? "Đang đăng nhập..." : twoFANeeded ? "Xác nhận" : "Đăng nhập"}
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-muted-foreground">
