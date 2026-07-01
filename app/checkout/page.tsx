@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, AlertCircle, MapPin, Plus, Star } from "lucide-react";
+import { CheckCircle2, AlertCircle, MapPin, Plus, Star, Loader2 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { isLoggedIn } from "@/lib/auth";
 import { formatVND } from "@/lib/format";
@@ -16,7 +16,21 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 
-interface OrderResult { orderCode: string; finalAmount: number; discountAmount: number; status: string; }
+interface OrderResult {
+  id: number;
+  orderCode: string;
+  finalAmount: number;
+  discountAmount: number;
+  status: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  paymentQrUrl?: string | null;
+}
+
+const paymentOptions = [
+  { value: "COD", label: "Thanh toán khi nhận (COD)", desc: "Trả tiền mặt khi nhận hàng" },
+  { value: "SePay", label: "Chuyển khoản (VietQR)", desc: "Quét mã QR, xác nhận tự động" },
+] as const;
 
 const manualFields = [
   { name: "shipRecipient", label: "Người nhận", placeholder: "Nguyễn Văn A" },
@@ -39,9 +53,11 @@ export default function CheckoutPage() {
     shipRecipient: "", shipPhone: "", shipProvince: "", shipDistrict: "",
     shipWard: "", shipAddressLine: "", note: "",
   });
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "SePay">("COD");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [order, setOrder] = useState<OrderResult | null>(null);
+  const [paid, setPaid] = useState(false);
 
   // chưa login thì về trang login (checkout cần token) — rồi quay lại đây
   useEffect(() => {
@@ -63,6 +79,21 @@ export default function CheckoutPage() {
       })
       .catch(() => setUseNew(true));
   }, [router]);
+
+  // Đơn chuyển khoản: poll trạng thái tới khi webhook SePay xác nhận đã thanh toán
+  useEffect(() => {
+    if (!order || paid || !order.paymentQrUrl) return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await apiClient<OrderResult>(`/api/orders/${order.id}`);
+        if (res.data.paymentStatus === "Paid") {
+          setPaid(true);
+          clearInterval(timer);
+        }
+      } catch { /* lỗi tạm thời, lần poll sau thử lại */ }
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [order, paid]);
 
   function update(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -103,7 +134,7 @@ export default function CheckoutPage() {
 
       const res = await apiClient<OrderResult>("/api/orders", {
         method: "POST",
-        body: JSON.stringify({ ...ship, note: form.note, paymentMethod: "COD", couponCode: couponCode || undefined }),
+        body: JSON.stringify({ ...ship, note: form.note, paymentMethod, couponCode: couponCode || undefined }),
       });
       setOrder(res.data);
     } catch (e) {
@@ -113,21 +144,54 @@ export default function CheckoutPage() {
     }
   }
 
-  // màn xác nhận sau khi đặt
+  // đơn chuyển khoản chưa thanh toán → hiện QR + chờ webhook xác nhận
+  if (order && order.paymentQrUrl && !paid) {
+    return (
+      <Container className="py-16">
+        <Card className="mx-auto max-w-md text-center">
+          <CardContent className="flex flex-col items-center gap-4 p-8">
+            <h1 className="text-2xl font-bold">Quét mã để thanh toán</h1>
+            <p className="text-muted-foreground">
+              Mã đơn: <b className="text-foreground">{order.orderCode}</b>
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={order.paymentQrUrl} alt="Mã VietQR thanh toán" className="size-64 rounded-lg border" />
+            <p className="text-xl font-bold text-primary">{formatVND(order.finalAmount)}</p>
+            <p className="text-sm text-muted-foreground">
+              Mở app ngân hàng → quét mã → chuyển đúng số tiền.
+              Giữ nguyên nội dung <b className="text-foreground">{order.orderCode}</b>.
+            </p>
+            <div className="flex items-center gap-2 text-sm text-primary">
+              <Loader2 className="size-4 animate-spin" /> Đang chờ thanh toán...
+            </div>
+            <Link href="/products" className={cn(buttonVariants({ variant: "outline" }), "mt-2")}>
+              Để sau, tiếp tục mua sắm
+            </Link>
+          </CardContent>
+        </Card>
+      </Container>
+    );
+  }
+
+  // màn xác nhận sau khi đặt (COD, hoặc đã thanh toán chuyển khoản)
   if (order) {
     return (
       <Container className="py-16">
         <Card className="mx-auto max-w-md text-center">
           <CardContent className="flex flex-col items-center gap-3 p-8">
             <CheckCircle2 className="size-14 text-success" />
-            <h1 className="text-2xl font-bold">Đặt hàng thành công!</h1>
+            <h1 className="text-2xl font-bold">
+              {paid ? "Thanh toán thành công!" : "Đặt hàng thành công!"}
+            </h1>
             <div className="text-muted-foreground">
               <p>Mã đơn: <b className="text-foreground">{order.orderCode}</b></p>
               {order.discountAmount > 0 && (
                 <p>Giảm giá: <b className="text-success">- {formatVND(order.discountAmount)}</b></p>
               )}
               <p>Tổng tiền: <b className="text-foreground">{formatVND(order.finalAmount)}</b></p>
-              <p>Trạng thái: {order.status} · Thanh toán khi nhận (COD)</p>
+              <p>
+                {paid ? "Đã thanh toán qua chuyển khoản" : "Thanh toán khi nhận hàng (COD)"}
+              </p>
             </div>
             <Link href="/products" className={cn(buttonVariants(), "mt-2")}>
               Tiếp tục mua sắm
@@ -251,8 +315,24 @@ export default function CheckoutPage() {
               />
             </div>
 
-            <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm">
-              Phương thức thanh toán: <b>Thanh toán khi nhận hàng (COD)</b>
+            <div className="space-y-2">
+              <Label>Phương thức thanh toán</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {paymentOptions.map((m) => (
+                  <button
+                    type="button"
+                    key={m.value}
+                    onClick={() => setPaymentMethod(m.value)}
+                    className={cn(
+                      "flex flex-col items-start gap-0.5 rounded-lg border p-3 text-left transition-colors",
+                      paymentMethod === m.value ? "border-primary bg-primary/5" : "border-input hover:bg-accent"
+                    )}
+                  >
+                    <span className="font-medium">{m.label}</span>
+                    <span className="text-xs text-muted-foreground">{m.desc}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {error && (
