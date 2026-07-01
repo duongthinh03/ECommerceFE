@@ -64,8 +64,12 @@ export async function apiClient<T>(
     },
   });
 
+  // Các endpoint đăng nhập: 401 = sai mật khẩu/2FA, KHÔNG phải phiên hết hạn → đừng refresh, để lỗi thật hiện ra
+  const isCredentialEndpoint = ["/api/auth/login", "/api/auth/google", "/api/auth/register", "/api/auth/refresh"]
+    .some((p) => path.startsWith(p));
+
   // Access token hết hạn → thử refresh (bằng cookie) đúng 1 lần rồi gọi lại request cũ
-  if (res.status === 401 && !retried) {
+  if (res.status === 401 && !retried && !isCredentialEndpoint) {
     const ok = await refreshAccessToken();
     if (ok) return apiClient<T>(path, options, true); // retry với cookie mới
     // refresh cũng fail = phiên thực sự hết → đăng xuất
