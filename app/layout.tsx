@@ -33,7 +33,8 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
+      {/* suppressHydrationWarning: extension trình duyệt (Bitdefender...) chèn attr vào body → bỏ qua cảnh báo mismatch */}
+      <body suppressHydrationWarning className="min-h-full flex flex-col bg-background font-sans text-foreground">
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
