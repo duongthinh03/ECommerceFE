@@ -116,17 +116,10 @@ export default function EditProductPage() {
               {saved && <p className="mt-3 text-sm text-success">{saved}</p>}
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader><CardTitle>Thư viện ảnh (ảnh phụ)</CardTitle></CardHeader>
-            <CardContent>
-              <ProductGallery productId={id} />
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Biến thể (SKU) */}
-        <div className="md:col-span-2">
+        {/* Biến thể + Thư viện ảnh — đều TỰ LƯU ngay, không cần bấm "Lưu thay đổi" */}
+        <div className="space-y-6 md:col-span-2">
           <Card className="h-fit">
             <CardHeader><CardTitle>Biến thể (SKU)</CardTitle></CardHeader>
             <CardContent className="space-y-3">
@@ -159,6 +152,13 @@ export default function EditProductPage() {
                   <Plus className="size-4" /> Thêm
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+
+          <Card className="h-fit">
+            <CardHeader><CardTitle>Thư viện ảnh (ảnh phụ)</CardTitle></CardHeader>
+            <CardContent>
+              <ProductGallery productId={id} />
             </CardContent>
           </Card>
         </div>
