@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Trash2, ShoppingCart, ArrowRight, Loader2 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
 
 interface CartItem {
@@ -18,31 +19,30 @@ interface CartItem {
 interface Cart { id: number; items: CartItem[]; totalQuantity: number; totalAmount: number; }
 
 export default function CartPage() {
+  const router = useRouter();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pending, setPending] = useState<number | null>(null); // variantId đang cập nhật
+  const [pending, setPending] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
 
   async function load() {
     setLoading(true);
     const res = await apiClient<Cart>("/api/cart");
     setCart(res.data);
+    const ids = res.data.items.map((i) => i.variantId);
+    // lần đầu: chọn hết; các lần sau: giữ lựa chọn (bỏ item đã xóa)
+    setSelected((cur) => (cur.size ? new Set([...cur].filter((v) => ids.includes(v))) : new Set(ids)));
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []); // chạy 1 lần khi mở trang
+  useEffect(() => { load(); }, []);
 
-  // Đổi số lượng: PUT trả về giỏ mới → set thẳng, không cần GET lại
   async function changeQty(variantId: number, quantity: number) {
     setPending(variantId);
     try {
-      const res = await apiClient<Cart>(`/api/cart/items/${variantId}`, {
-        method: "PUT",
-        body: JSON.stringify({ quantity }),
-      });
+      const res = await apiClient<Cart>(`/api/cart/items/${variantId}`, { method: "PUT", body: JSON.stringify({ quantity }) });
       setCart(res.data);
-    } finally {
-      setPending(null);
-    }
+    } finally { setPending(null); }
   }
 
   async function remove(variantId: number) {
@@ -50,9 +50,16 @@ export default function CartPage() {
     try {
       const res = await apiClient<Cart>(`/api/cart/items/${variantId}`, { method: "DELETE" });
       setCart(res.data);
-    } finally {
-      setPending(null);
-    }
+      setSelected((s) => { const n = new Set(s); n.delete(variantId); return n; });
+    } finally { setPending(null); }
+  }
+
+  function toggle(variantId: number) {
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(variantId)) n.delete(variantId); else n.add(variantId);
+      return n;
+    });
   }
 
   if (loading)
@@ -72,28 +79,50 @@ export default function CartPage() {
           <p className="text-lg font-semibold">Giỏ hàng trống</p>
           <p className="text-muted-foreground">Hãy thêm vài sản phẩm để bắt đầu.</p>
         </div>
-        <Link href="/products" className={cn(buttonVariants())}>
-          Tiếp tục mua sắm
-        </Link>
+        <Link href="/products" className={cn(buttonVariants())}>Tiếp tục mua sắm</Link>
       </Container>
     );
 
-  const stockIssue = cart.items.some((i) => i.quantity > i.stock);
+  const allSelected = selected.size === cart.items.length;
+  const selectedItems = cart.items.filter((i) => selected.has(i.variantId));
+  const selCount = selectedItems.reduce((s, i) => s + i.quantity, 0);
+  const selTotal = selectedItems.reduce((s, i) => s + i.lineTotal, 0);
+  const selStockIssue = selectedItems.some((i) => i.quantity > i.stock);
+  const canCheckout = selectedItems.length > 0 && !selStockIssue;
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(cart!.items.map((i) => i.variantId)));
+  }
+
+  function goCheckout() {
+    if (!canCheckout) return;
+    sessionStorage.setItem("checkout_variants", JSON.stringify([...selected]));
+    router.push("/checkout");
+  }
 
   return (
     <Container className="py-10">
       <h1 className="mb-6 text-3xl font-bold tracking-tight">Giỏ hàng</h1>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Danh sách item */}
         <div className="space-y-3 lg:col-span-2">
+          <label className="flex items-center gap-2 px-1 text-sm font-medium">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} className="size-4 accent-primary" />
+            Chọn tất cả ({cart.items.length})
+          </label>
+
           {cart.items.map((i) => (
-            <Card key={i.id} className="flex items-center justify-between gap-4 p-4">
-              <div className="min-w-0">
+            <Card key={i.id} className="flex items-center gap-3 p-4">
+              <input
+                type="checkbox"
+                checked={selected.has(i.variantId)}
+                onChange={() => toggle(i.variantId)}
+                className="size-4 shrink-0 accent-primary"
+                aria-label={`Chọn ${i.productName}`}
+              />
+              <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{i.productName}</p>
-                <p className="text-sm text-muted-foreground">
-                  {i.sku} · {formatVND(i.price)}
-                </p>
+                <p className="text-sm text-muted-foreground">{i.sku} · {formatVND(i.price)}</p>
                 <div className="mt-2">
                   <QuantityStepper
                     value={i.quantity}
@@ -125,29 +154,28 @@ export default function CartPage() {
           ))}
         </div>
 
-        {/* Tóm tắt đơn */}
         <Card className="h-fit p-5">
           <h2 className="font-semibold">Tóm tắt đơn hàng</h2>
           <div className="mt-4 flex justify-between text-sm text-muted-foreground">
-            <span>Tạm tính ({cart.totalQuantity} sản phẩm)</span>
-            <span>{formatVND(cart.totalAmount)}</span>
+            <span>Tạm tính ({selCount} sản phẩm)</span>
+            <span>{formatVND(selTotal)}</span>
           </div>
           <div className="mt-3 flex justify-between border-t border-border pt-3 text-lg font-bold">
             <span>Tổng</span>
-            <span className="text-primary">{formatVND(cart.totalAmount)}</span>
+            <span className="text-primary">{formatVND(selTotal)}</span>
           </div>
-          {stockIssue && (
-            <p className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Có sản phẩm hết/vượt tồn kho. Giảm số lượng hoặc xóa trước khi thanh toán.
+
+          {selectedItems.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">Chọn sản phẩm để thanh toán.</p>
+          ) : selStockIssue ? (
+            <p className="mt-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Sản phẩm đã chọn hết/vượt tồn. Giảm số lượng hoặc bỏ chọn.
             </p>
-          )}
-          <Link
-            href="/checkout"
-            aria-disabled={stockIssue}
-            className={cn(buttonVariants({ size: "lg" }), "mt-5 w-full", stockIssue && "pointer-events-none opacity-50")}
-          >
-            Thanh toán <ArrowRight className="size-4" />
-          </Link>
+          ) : null}
+
+          <Button onClick={goCheckout} disabled={!canCheckout} size="lg" className="mt-5 w-full">
+            Thanh toán ({selectedItems.length}) <ArrowRight className="size-4" />
+          </Button>
         </Card>
       </div>
     </Container>

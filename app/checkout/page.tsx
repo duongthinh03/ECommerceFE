@@ -140,10 +140,15 @@ export default function CheckoutPage() {
         }
       }
 
+      // các variant đã chọn ở trang giỏ (null = mua hết giỏ)
+      const selRaw = typeof window !== "undefined" ? sessionStorage.getItem("checkout_variants") : null;
+      const selectedVariantIds = selRaw ? (JSON.parse(selRaw) as number[]) : undefined;
+
       const res = await apiClient<OrderResult>("/api/orders", {
         method: "POST",
-        body: JSON.stringify({ ...ship, note: form.note, paymentMethod, couponCode: couponCode || undefined }),
+        body: JSON.stringify({ ...ship, note: form.note, paymentMethod, couponCode: couponCode || undefined, selectedVariantIds }),
       });
+      sessionStorage.removeItem("checkout_variants");   // dùng xong xóa
       setOrder(res.data);
     } catch (e) {
       setError((e as Error).message);
