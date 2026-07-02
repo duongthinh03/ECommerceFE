@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { ImageIcon, X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { ImageIcon, X, ChevronLeft, ChevronRight, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Gallery chi tiết: ảnh chính + strip thumbnail + bấm ảnh để phóng to toàn màn hình (lightbox).
+// Gallery chi tiết: ảnh chính + thumbnail + lightbox toàn màn hình có zoom to/nhỏ + kéo xem.
 export function ProductImageGallery({ cover, images }: { cover?: string | null; images: string[] }) {
   const all = [cover, ...images].filter(Boolean) as string[];
   const unique = Array.from(new Set(all));
@@ -12,25 +12,34 @@ export function ProductImageGallery({ cover, images }: { cover?: string | null; 
 
   const [idx, setIdx] = useState(0);
   const [zoom, setZoom] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const drag = useRef<{ x: number; y: number } | null>(null);
 
-  const prev = useCallback(() => setIdx((i) => (i - 1 + count) % count), [count]);
-  const next = useCallback(() => setIdx((i) => (i + 1) % count), [count]);
+  const reset = useCallback(() => { setScale(1); setOffset({ x: 0, y: 0 }); }, []);
+  const prev = useCallback(() => { setIdx((i) => (i - 1 + count) % count); reset(); }, [count, reset]);
+  const next = useCallback(() => { setIdx((i) => (i + 1) % count); reset(); }, [count, reset]);
+  const zoomIn = useCallback(() => setScale((s) => Math.min(s + 0.5, 4)), []);
+  const zoomOut = useCallback(() => setScale((s) => {
+    const n = Math.max(s - 0.5, 1);
+    if (n === 1) setOffset({ x: 0, y: 0 });
+    return n;
+  }), []);
 
-  // Khi phóng to: phím ← → chuyển ảnh, Esc đóng, khóa cuộn nền
+  // phím tắt khi mở lightbox
   useEffect(() => {
     if (!zoom) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setZoom(false);
       else if (e.key === "ArrowLeft") prev();
       else if (e.key === "ArrowRight") next();
+      else if (e.key === "+" || e.key === "=") zoomIn();
+      else if (e.key === "-") zoomOut();
     }
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [zoom, prev, next]);
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+  }, [zoom, prev, next, zoomIn, zoomOut]);
 
   if (count === 0)
     return (
@@ -41,12 +50,28 @@ export function ProductImageGallery({ cover, images }: { cover?: string | null; 
 
   const current = unique[idx];
 
+  // kéo để xem (chỉ khi đã zoom > 1)
+  function onMouseDown(e: React.MouseEvent) {
+    if (scale <= 1) return;
+    e.preventDefault();
+    drag.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
+  }
+  function onMouseMove(e: React.MouseEvent) {
+    if (!drag.current) return;
+    setOffset({ x: e.clientX - drag.current.x, y: e.clientY - drag.current.y });
+  }
+  function endDrag() { drag.current = null; }
+
+  function onWheel(e: React.WheelEvent) {
+    if (e.deltaY < 0) zoomIn(); else zoomOut();
+  }
+
   return (
     <div className="space-y-3">
       {/* Ảnh chính — bấm để phóng to */}
       <button
         type="button"
-        onClick={() => setZoom(true)}
+        onClick={() => { reset(); setZoom(true); }}
         className="group relative block aspect-square w-full overflow-hidden rounded-xl border border-border bg-muted"
         title="Bấm để phóng to"
       >
@@ -77,10 +102,10 @@ export function ProductImageGallery({ cover, images }: { cover?: string | null; 
         </div>
       )}
 
-      {/* Lightbox toàn màn hình */}
+      {/* Lightbox */}
       {zoom && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/90 p-4"
           onClick={() => setZoom(false)}
         >
           <button
@@ -117,15 +142,37 @@ export function ProductImageGallery({ cover, images }: { cover?: string | null; 
           <img
             src={current}
             alt="Ảnh phóng to"
-            className="max-h-full max-w-full object-contain"
+            draggable={false}
+            className="max-h-full max-w-full select-none object-contain"
+            style={{
+              transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+              cursor: scale > 1 ? (drag.current ? "grabbing" : "grab") : "zoom-in",
+            }}
             onClick={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => { e.stopPropagation(); scale > 1 ? reset() : setScale(2); }}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={endDrag}
+            onMouseLeave={endDrag}
+            onWheel={onWheel}
           />
 
-          {count > 1 && (
-            <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-sm text-white">
-              {idx + 1} / {count}
-            </span>
-          )}
+          {/* Thanh zoom + đếm ảnh */}
+          <div
+            className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full bg-white/10 px-4 py-2 text-sm text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button type="button" onClick={zoomOut} disabled={scale <= 1} className="disabled:opacity-40" aria-label="Thu nhỏ">
+              <ZoomOut className="size-5" />
+            </button>
+            <span className="w-12 text-center tabular-nums">{Math.round(scale * 100)}%</span>
+            <button type="button" onClick={zoomIn} disabled={scale >= 4} className="disabled:opacity-40" aria-label="Phóng to">
+              <ZoomIn className="size-5" />
+            </button>
+            {count > 1 && (
+              <span className="ml-1 border-l border-white/25 pl-3 tabular-nums">{idx + 1} / {count}</span>
+            )}
+          </div>
         </div>
       )}
     </div>
