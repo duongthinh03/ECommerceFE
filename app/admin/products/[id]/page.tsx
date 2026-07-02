@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ShieldAlert, Loader2, Trash2, Plus } from "lucide-react";
+import { ChevronLeft, ShieldAlert, Loader2, Trash2, Plus, Pencil, Check } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { isLoggedIn, isStaff } from "@/lib/auth";
 import { Product, Variant } from "@/lib/types";
@@ -26,6 +26,9 @@ export default function EditProductPage() {
   const [saved, setSaved] = useState("");
   const [newV, setNewV] = useState({ sku: "", optionName: "", price: 0, stock: 0 });
   const [addErr, setAddErr] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editV, setEditV] = useState({ sku: "", optionName: "", price: 0, stock: 0, isActive: true });
+  const [editErr, setEditErr] = useState("");
 
   async function loadVariants() {
     const r = await apiClient<Variant[]>(`/api/products/${id}/variants`);
@@ -78,6 +81,36 @@ export default function EditProductPage() {
     }
   }
 
+  function startEdit(vr: Variant) {
+    setEditErr("");
+    setEditingId(vr.id);
+    setEditV({ sku: vr.sku, optionName: vr.optionName ?? "", price: vr.price, stock: vr.stock, isActive: vr.isActive });
+  }
+
+  async function saveEdit(vr: Variant) {
+    setEditErr("");
+    try {
+      await apiClient(`/api/products/${id}/variants/${vr.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          sku: editV.sku,
+          optionName: editV.optionName || null,
+          price: editV.price,
+          stock: editV.stock,
+          isActive: editV.isActive,
+          // giữ nguyên các field không sửa ở đây
+          compareAtPrice: vr.compareAtPrice ?? null,
+          imageUrl: vr.imageUrl ?? null,
+          weight: vr.weight ?? null,
+        }),
+      });
+      setEditingId(null);
+      await loadVariants();
+    } catch (e) {
+      setEditErr((e as Error).message);
+    }
+  }
+
   if (denied)
     return (
       <Container className="flex flex-col items-center gap-3 py-24 text-center text-muted-foreground">
@@ -124,20 +157,47 @@ export default function EditProductPage() {
             <CardHeader><CardTitle>Biến thể (SKU)</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {variants.length === 0 && <p className="text-sm text-muted-foreground">Chưa có biến thể.</p>}
-              {variants.map((vr) => (
-                <div key={vr.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-2 text-sm">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{vr.optionName || vr.sku}</p>
-                    <p className="text-muted-foreground">
-                      {vr.optionName ? `${vr.sku} · ` : ""}{formatVND(vr.price)} · Kho {vr.stock}
-                      {!vr.isActive && <Badge variant="secondary" className="ml-1">Ẩn</Badge>}
-                    </p>
+              {variants.map((vr) =>
+                editingId === vr.id ? (
+                  <div key={vr.id} className="space-y-2 rounded-md border border-primary/50 p-2 text-sm">
+                    <Input placeholder="SKU" value={editV.sku} onChange={(e) => setEditV({ ...editV, sku: e.target.value })} />
+                    <Input placeholder={`Nhãn (vd "3U", "Đỏ / 42")`} value={editV.optionName} onChange={(e) => setEditV({ ...editV, optionName: e.target.value })} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input type="number" min={0} placeholder="Giá" value={editV.price} onChange={(e) => setEditV({ ...editV, price: Number(e.target.value) })} />
+                      <Input type="number" min={0} placeholder="Kho" value={editV.stock} onChange={(e) => setEditV({ ...editV, stock: Number(e.target.value) })} />
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input type="checkbox" checked={editV.isActive} onChange={(e) => setEditV({ ...editV, isActive: e.target.checked })} className="size-4 accent-primary" />
+                      Đang bán
+                    </label>
+                    {editErr && <p className="text-sm text-destructive">{editErr}</p>}
+                    <div className="flex gap-2">
+                      <Button size="sm" className="flex-1 gap-1.5" onClick={() => saveEdit(vr)}>
+                        <Check className="size-4" /> Lưu
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>Hủy</Button>
+                    </div>
                   </div>
-                  <button onClick={() => removeVariant(vr.id, vr.sku)} className="text-destructive hover:opacity-70" aria-label="Xóa">
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-              ))}
+                ) : (
+                  <div key={vr.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-2 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{vr.optionName || vr.sku}</p>
+                      <p className="text-muted-foreground">
+                        {vr.optionName ? `${vr.sku} · ` : ""}{formatVND(vr.price)} · Kho {vr.stock}
+                        {!vr.isActive && <Badge variant="secondary" className="ml-1">Ẩn</Badge>}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button onClick={() => startEdit(vr)} className="p-1 text-muted-foreground hover:text-primary" aria-label="Sửa">
+                        <Pencil className="size-4" />
+                      </button>
+                      <button onClick={() => removeVariant(vr.id, vr.sku)} className="p-1 text-destructive hover:opacity-70" aria-label="Xóa">
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
 
               <form onSubmit={addVariant} className="space-y-2 border-t border-border pt-3">
                 <Label className="text-xs text-muted-foreground">Thêm biến thể</Label>

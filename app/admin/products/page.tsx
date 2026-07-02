@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Loader2, ShieldAlert, Plus, Pencil, Trash2 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { isLoggedIn, isStaff } from "@/lib/auth";
-import { Product } from "@/lib/types";
+import { Product, Paged } from "@/lib/types";
 import { formatVND } from "@/lib/format";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
@@ -20,8 +20,8 @@ export default function AdminProductsPage() {
   const [denied, setDenied] = useState(false);
 
   async function load() {
-    const r = await apiClient<Product[]>("/api/products");
-    setProducts(r.data);
+    const r = await apiClient<Paged<Product>>("/api/products?pageSize=100");
+    setProducts(r.data.items);
   }
 
   useEffect(() => {

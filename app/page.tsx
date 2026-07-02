@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Truck, ShieldCheck, Boxes, Sparkles } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import { Product } from "@/lib/types";
+import { Product, Paged } from "@/lib/types";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { ProductCard } from "@/components/product-card";
@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 // Lấy vài SP nổi bật cho trang chủ; lỗi API thì trang chủ vẫn hiển thị (không hard-fail).
 async function getFeatured(): Promise<Product[]> {
   try {
-    const res = await apiGet<Product[]>("/api/products");
-    return res.data.slice(0, 8);
+    const res = await apiGet<Paged<Product>>("/api/products?pageSize=8");
+    return res.data.items;
   } catch {
     return [];
   }

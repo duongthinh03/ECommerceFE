@@ -30,8 +30,8 @@ export default function CartPage() {
     const res = await apiClient<Cart>("/api/cart");
     setCart(res.data);
     const ids = res.data.items.map((i) => i.variantId);
-    // lần đầu: chọn hết; các lần sau: giữ lựa chọn (bỏ item đã xóa)
-    setSelected((cur) => (cur.size ? new Set([...cur].filter((v) => ids.includes(v))) : new Set(ids)));
+    // mặc định KHÔNG tích gì; chỉ giữ lại lựa chọn hiện có (bỏ item đã xóa)
+    setSelected((cur) => new Set([...cur].filter((v) => ids.includes(v))));
     setLoading(false);
   }
 

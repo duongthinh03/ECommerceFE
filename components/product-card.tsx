@@ -3,6 +3,7 @@ import { ImageIcon } from "lucide-react";
 import { Product } from "@/lib/types";
 import { formatVND } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { StarRating } from "@/components/star-rating";
 
 export function ProductCard({ product }: { product: Product }) {
   return (
@@ -46,6 +47,12 @@ export function ProductCard({ product }: { product: Product }) {
           </h3>
           {product.brandName && (
             <p className="text-xs text-muted-foreground">{product.brandName}</p>
+          )}
+          {!!product.reviewCount && product.reviewCount > 0 && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <StarRating value={Math.round(product.avgRating ?? 0)} size={13} />
+              <span>({product.reviewCount})</span>
+            </div>
           )}
           <p className="mt-auto pt-1 text-lg font-bold text-primary">
             {formatVND(product.displayPrice)}

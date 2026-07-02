@@ -5,6 +5,8 @@ import { Product, Variant, ProductImage } from "@/lib/types";
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
 import { ProductImageGallery } from "@/components/product-image-gallery";
+import { ProductReviews } from "@/components/product-reviews";
+import { WishlistButton } from "@/components/wishlist-button";
 import VariantSelector from "./VariantSelector";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -54,8 +56,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
           {/* Server fetch xong → truyền variants xuống Client Component để tương tác */}
           <VariantSelector variants={variants} />
+
+          <div className="mt-4">
+            <WishlistButton productId={id} />
+          </div>
         </div>
       </div>
+
+      {/* Đánh giá sản phẩm (client — tự tải, cần cookie để biết đã mua) */}
+      <ProductReviews productId={id} />
     </Container>
   );
 }

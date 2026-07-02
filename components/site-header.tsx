@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package, ChevronDown, ShieldCheck } from "lucide-react";
+import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package, ChevronDown, ShieldCheck, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -146,6 +146,13 @@ export function SiteHeader() {
                   Xin chào, <b className="text-foreground">{userName.trim().split(" ").pop()}</b>
                 </span>
               )}
+              <Link
+                href="/account/wishlist"
+                aria-label="Yêu thích"
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+              >
+                <Heart className="size-5" />
+              </Link>
               <Link
                 href="/account/orders"
                 aria-label="Đơn của tôi"

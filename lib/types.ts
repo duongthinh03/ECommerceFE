@@ -1,3 +1,14 @@
+// Khớp PagedResult<T> của BE
+export interface Paged<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -11,6 +22,25 @@ export interface Product {
   thumbnail?: string;
   isActive: boolean;
   inStock?: boolean;   // còn hàng? (có ≥1 variant còn tồn)
+  avgRating?: number;  // điểm đánh giá TB (0 nếu chưa có)
+  reviewCount?: number;
+}
+
+export interface Review {
+  id: number;
+  userId: number;
+  userName: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+}
+
+export interface ReviewSummary {
+  averageRating: number;
+  count: number;
+  canReview: boolean;   // đã mua & chưa đánh giá
+  hasReviewed: boolean;
+  items: Review[];
 }
 
 export interface Category {
@@ -96,5 +126,6 @@ export interface Variant {
   compareAtPrice?: number;
   stock: number;
   imageUrl?: string;
+  weight?: number | null;
   isActive: boolean;
 }
