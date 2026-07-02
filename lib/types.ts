@@ -10,6 +10,7 @@ export interface Product {
   displayPrice: number;
   thumbnail?: string;
   isActive: boolean;
+  inStock?: boolean;   // còn hàng? (có ≥1 variant còn tồn)
 }
 
 export interface Category {

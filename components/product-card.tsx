@@ -30,6 +30,14 @@ export function ProductCard({ product }: { product: Product }) {
               {product.categoryName}
             </Badge>
           )}
+          {product.inStock === false && (
+            <>
+              <div className="absolute inset-0 bg-background/55" />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-md bg-foreground/85 px-3 py-1 text-sm font-semibold text-background">
+                Hết hàng
+              </span>
+            </>
+          )}
         </div>
 
         <div className="flex flex-1 flex-col gap-1.5 p-4">

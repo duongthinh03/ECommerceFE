@@ -13,7 +13,7 @@ import { QuantityStepper } from "@/components/ui/quantity-stepper";
 
 interface CartItem {
   id: number; productName: string; variantId: number; sku: string;
-  quantity: number; price: number; lineTotal: number;
+  quantity: number; price: number; lineTotal: number; stock: number;
 }
 interface Cart { id: number; items: CartItem[]; totalQuantity: number; totalAmount: number; }
 
@@ -78,6 +78,8 @@ export default function CartPage() {
       </Container>
     );
 
+  const stockIssue = cart.items.some((i) => i.quantity > i.stock);
+
   return (
     <Container className="py-10">
       <h1 className="mb-6 text-3xl font-bold tracking-tight">Giỏ hàng</h1>
@@ -97,10 +99,16 @@ export default function CartPage() {
                     value={i.quantity}
                     onChange={(q) => changeQty(i.variantId, q)}
                     min={1}
-                    disabled={pending === i.variantId}
+                    max={i.stock > 0 ? i.stock : i.quantity}
+                    disabled={pending === i.variantId || i.stock === 0}
                     size="sm"
                   />
                 </div>
+                {i.stock === 0 ? (
+                  <p className="mt-1 text-sm font-medium text-destructive">Hết hàng — vui lòng xóa</p>
+                ) : i.quantity > i.stock ? (
+                  <p className="mt-1 text-sm font-medium text-destructive">Chỉ còn {i.stock} — giảm số lượng</p>
+                ) : null}
               </div>
               <div className="flex flex-col items-end gap-2 whitespace-nowrap">
                 <span className="font-semibold text-primary">{formatVND(i.lineTotal)}</span>
@@ -128,7 +136,16 @@ export default function CartPage() {
             <span>Tổng</span>
             <span className="text-primary">{formatVND(cart.totalAmount)}</span>
           </div>
-          <Link href="/checkout" className={cn(buttonVariants({ size: "lg" }), "mt-5 w-full")}>
+          {stockIssue && (
+            <p className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Có sản phẩm hết/vượt tồn kho. Giảm số lượng hoặc xóa trước khi thanh toán.
+            </p>
+          )}
+          <Link
+            href="/checkout"
+            aria-disabled={stockIssue}
+            className={cn(buttonVariants({ size: "lg" }), "mt-5 w-full", stockIssue && "pointer-events-none opacity-50")}
+          >
             Thanh toán <ArrowRight className="size-4" />
           </Link>
         </Card>
