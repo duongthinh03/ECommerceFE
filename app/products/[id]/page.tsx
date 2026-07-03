@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { apiGet } from "@/lib/api";
+import { SITE_URL } from "@/lib/site";
 import { Product, Variant, ProductImage } from "@/lib/types";
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   try {
     const product = (await apiGet<Product>(`/api/products/${id}`)).data;
-    return { title: product.name };
+    const desc = product.description?.slice(0, 160) || `Mua ${product.name} chính hãng tại ShopViet.`;
+    return {
+      title: product.name,
+      description: desc,
+      alternates: { canonical: `/products/${id}` },
+      openGraph: {
+        title: product.name,
+        description: desc,
+        images: product.thumbnail ? [product.thumbnail] : undefined,
+      },
+    };
   } catch {
     return { title: "Sản phẩm" };
   }
@@ -26,8 +37,29 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const variants = (await apiGet<Variant[]>(`/api/products/${id}/variants`)).data;
   const images = await apiGet<ProductImage[]>(`/api/products/${id}/images`).then((r) => r.data).catch(() => []);
 
+  // Structured data (schema.org/Product) → Google hiển thị giá + sao trong kết quả tìm kiếm
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    ...(product.thumbnail ? { image: [product.thumbnail] } : {}),
+    ...(product.description ? { description: product.description } : {}),
+    ...(product.brandName ? { brand: { "@type": "Brand", name: product.brandName } } : {}),
+    offers: {
+      "@type": "Offer",
+      price: product.displayPrice,
+      priceCurrency: "VND",
+      availability: product.inStock === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+      url: `${SITE_URL}/products/${id}`,
+    },
+    ...(product.reviewCount
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: product.avgRating, reviewCount: product.reviewCount } }
+      : {}),
+  };
+
   return (
     <Container className="py-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Link
         href="/products"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
