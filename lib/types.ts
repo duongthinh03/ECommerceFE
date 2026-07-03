@@ -24,6 +24,7 @@ export interface Product {
   inStock?: boolean;   // còn hàng? (có ≥1 variant còn tồn)
   avgRating?: number;  // điểm đánh giá TB (0 nếu chưa có)
   reviewCount?: number;
+  soldCount?: number;  // đã bán
 }
 
 export interface Dashboard {

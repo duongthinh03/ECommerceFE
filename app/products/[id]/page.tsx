@@ -1,14 +1,22 @@
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronRight, Truck, RotateCcw, ShieldCheck, Lock } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { SITE_URL } from "@/lib/site";
+import { formatCompact } from "@/lib/format";
 import { Product, Variant, ProductImage } from "@/lib/types";
 import { Container } from "@/components/ui/container";
-import { Badge } from "@/components/ui/badge";
+import { StarRating } from "@/components/star-rating";
 import { ProductImageGallery } from "@/components/product-image-gallery";
 import { ProductReviews } from "@/components/product-reviews";
 import { WishlistButton } from "@/components/wishlist-button";
 import VariantSelector from "./VariantSelector";
+
+const benefits = [
+  { icon: Truck, text: "Giao nhanh toàn quốc" },
+  { icon: RotateCcw, text: "Đổi trả trong 7 ngày" },
+  { icon: ShieldCheck, text: "Hàng chính hãng" },
+  { icon: Lock, text: "Thanh toán an toàn" },
+];
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -58,32 +66,57 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   };
 
   return (
-    <Container className="py-8">
+    <Container className="py-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <Link
-        href="/products"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="size-4" /> Tất cả sản phẩm
-      </Link>
+
+      {/* Breadcrumb */}
+      <nav className="mb-5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/" className="hover:text-foreground">Trang chủ</Link>
+        <ChevronRight className="size-3.5" />
+        <Link href="/products" className="hover:text-foreground">Sản phẩm</Link>
+        {product.categoryName && (
+          <>
+            <ChevronRight className="size-3.5" />
+            <Link href={`/products?category=${product.categoryId}`} className="hover:text-foreground">
+              {product.categoryName}
+            </Link>
+          </>
+        )}
+        <ChevronRight className="size-3.5" />
+        <span className="max-w-[16rem] truncate text-foreground">{product.name}</span>
+      </nav>
 
       <div className="grid gap-8 md:grid-cols-2">
-        {/* Ảnh sản phẩm — gallery (bìa + ảnh phụ) */}
-        <ProductImageGallery cover={product.thumbnail} images={images.map((i) => i.imageUrl)} />
+        {/* Ảnh — sticky khi cuộn trên desktop */}
+        <div className="md:sticky md:top-24 md:self-start">
+          <ProductImageGallery cover={product.thumbnail} images={images.map((i) => i.imageUrl)} />
+        </div>
 
         {/* Thông tin + chọn variant */}
         <div>
-          {product.categoryName && (
-            <Badge variant="secondary" className="mb-2 font-normal">
-              {product.categoryName}
-            </Badge>
-          )}
-          <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{product.name}</h1>
           {product.brandName && (
-            <p className="mt-1 text-sm text-muted-foreground">Thương hiệu: {product.brandName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Thương hiệu: <span className="font-medium text-foreground">{product.brandName}</span>
+            </p>
           )}
-          {product.description && (
-            <p className="mt-4 leading-relaxed text-muted-foreground">{product.description}</p>
+
+          {/* Đánh giá + đã bán */}
+          {(!!product.reviewCount || !!product.soldCount) && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              {!!product.reviewCount && product.reviewCount > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <StarRating value={Math.round(product.avgRating ?? 0)} size={16} />
+                  <span className="font-semibold">{(product.avgRating ?? 0).toFixed(1)}</span>
+                  <span className="text-muted-foreground">({product.reviewCount} đánh giá)</span>
+                </span>
+              )}
+              {!!product.soldCount && product.soldCount > 0 && (
+                <span className="text-muted-foreground">
+                  <span className="mr-3 text-border">|</span>Đã bán {formatCompact(product.soldCount)}
+                </span>
+              )}
+            </div>
           )}
 
           {/* Server fetch xong → truyền variants xuống Client Component để tương tác */}
@@ -92,6 +125,24 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <div className="mt-4">
             <WishlistButton productId={id} />
           </div>
+
+          {/* Dải tiện ích / cam kết */}
+          <div className="mt-6 grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/30 p-4">
+            {benefits.map((b) => (
+              <div key={b.text} className="flex items-center gap-2 text-sm">
+                <b.icon className="size-4 shrink-0 text-primary" />
+                <span className="text-muted-foreground">{b.text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Mô tả */}
+          {product.description && (
+            <div className="mt-6 border-t border-border pt-6">
+              <h2 className="mb-2 font-semibold">Mô tả sản phẩm</h2>
+              <p className="whitespace-pre-line leading-relaxed text-muted-foreground">{product.description}</p>
+            </div>
+          )}
         </div>
       </div>
 
