@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, Boxes, Ticket } from "lucide-react";
+import { LayoutDashboard, Package, Boxes, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Container } from "@/components/ui/container";
 
 const tabs = [
+  { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, exact: true },
   { href: "/admin/orders", label: "Đơn hàng", icon: Package },
   { href: "/admin/products", label: "Sản phẩm", icon: Boxes },
   { href: "/admin/coupons", label: "Mã giảm giá", icon: Ticket },
@@ -21,7 +22,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="border-b border-border bg-muted/30">
         <Container className="flex gap-1 overflow-x-auto py-2">
           {tabs.map((t) => {
-            const active = pathname.startsWith(t.href);
+            const active = t.exact ? pathname === t.href : pathname.startsWith(t.href);
             return (
               <Link
                 key={t.href}

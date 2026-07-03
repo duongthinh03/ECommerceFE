@@ -26,6 +26,21 @@ export interface Product {
   reviewCount?: number;
 }
 
+export interface Dashboard {
+  revenueToday: number;
+  revenueThisMonth: number;
+  revenueAllTime: number;
+  totalOrders: number;
+  pendingOrders: number;
+  totalCustomers: number;
+  totalProducts: number;
+  ordersByStatus: { status: string; count: number }[];
+  revenueDaily: { date: string; revenue: number }[];      // 30 ngày
+  revenueMonthly: { month: string; revenue: number }[];   // 12 tháng
+  topProducts: { productId: number; name: string; soldQty: number; revenue: number }[];
+  lowStock: { productId: number; productName: string; sku: string; optionName?: string | null; stock: number }[];
+}
+
 export interface Review {
   id: number;
   userId: number;
