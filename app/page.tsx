@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Truck, ShieldCheck, Boxes, Sparkles } from "lucide-react";
+import { ArrowRight, Truck, ShieldCheck, Boxes, Sparkles, Tag } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import { Product, Paged } from "@/lib/types";
+import { Product, Paged, Category } from "@/lib/types";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { ProductCard } from "@/components/product-card";
@@ -17,6 +17,15 @@ async function getFeatured(): Promise<Product[]> {
   }
 }
 
+async function getCategories(): Promise<Category[]> {
+  try {
+    const res = await apiGet<Category[]>("/api/categories");
+    return res.data.filter((c) => c.isActive);
+  } catch {
+    return [];
+  }
+}
+
 const valueProps = [
   { icon: Boxes, title: "Đa ngành hàng", desc: "Vợt, giày, sách… tất cả tại một nơi." },
   { icon: Truck, title: "Giao hàng nhanh", desc: "Ship toàn quốc, thanh toán khi nhận (COD)." },
@@ -24,7 +33,7 @@ const valueProps = [
 ];
 
 export default async function Home() {
-  const featured = await getFeatured();
+  const [featured, categories] = await Promise.all([getFeatured(), getCategories()]);
 
   return (
     <>
@@ -80,6 +89,34 @@ export default async function Home() {
           ))}
         </Container>
       </section>
+
+      {/* Danh mục nổi bật */}
+      {categories.length > 0 && (
+        <section className="border-b border-border">
+          <Container className="py-14">
+            <div className="mb-6 flex items-end justify-between">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Danh mục nổi bật</h2>
+                <p className="mt-1 text-muted-foreground">Chọn nhanh ngành hàng bạn quan tâm</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {categories.slice(0, 12).map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/products?category=${c.id}`}
+                  className="group flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 text-center transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-soft"
+                >
+                  <span className="grid size-12 place-items-center rounded-full bg-accent text-accent-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    <Tag className="size-5" />
+                  </span>
+                  <span className="line-clamp-2 text-sm font-medium leading-snug">{c.name}</span>
+                </Link>
+              ))}
+            </div>
+          </Container>
+        </section>
+      )}
 
       {/* Featured products */}
       <section>

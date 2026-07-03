@@ -10,7 +10,15 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
 
-export default function VariantSelector({ variants }: { variants: Variant[] }) {
+export default function VariantSelector({
+  variants,
+  productName,
+  productThumbnail,
+}: {
+  variants: Variant[];
+  productName: string;
+  productThumbnail?: string | null;
+}) {
   const router = useRouter();
   const [selected, setSelected] = useState<Variant | null>(variants[0] ?? null);
   const [quantity, setQuantity] = useState(1);
@@ -46,12 +54,19 @@ export default function VariantSelector({ variants }: { variants: Variant[] }) {
     setBusy(null);
   }
 
-  async function handleBuyNow() {
-    setBusy("buy");
-    setMessage(null);
-    const ok = await addToCart();
-    setBusy(null);
-    if (ok) router.push("/checkout"); // mua thẳng → tới checkout luôn
+  function handleBuyNow() {
+    if (!selected || selected.stock <= 0) return;
+    // MUA THẲNG: không thêm vào giỏ — gửi món qua sessionStorage cho trang checkout
+    sessionStorage.setItem("buy_now", JSON.stringify({
+      variantId: selected.id,
+      quantity,
+      productName,
+      sku: selected.sku,
+      price: selected.price,
+      thumbnail: selected.imageUrl ?? productThumbnail ?? null,
+    }));
+    sessionStorage.removeItem("checkout_variants");   // tránh lẫn với "chọn từ giỏ"
+    router.push("/checkout");
   }
 
   if (variants.length === 0)

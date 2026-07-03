@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string;
   fullName: string;
   role: string;
+  avatarUrl?: string | null;
 }
 
 const USER_KEY = "auth_user";

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, User as UserIcon } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { getUser, isLoggedIn } from "@/lib/auth";
 import { ReviewSummary } from "@/lib/types";
@@ -126,11 +126,21 @@ export function ProductReviews({ productId }: { productId: number | string }) {
           {data.items.map((r) => (
             <li key={r.id} className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium">{r.userName}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <StarRating value={r.rating} size={14} />
-                    <span className="text-xs text-muted-foreground">{formatDate(r.createdAt)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-muted text-muted-foreground">
+                    {r.userAvatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={r.userAvatarUrl} alt="" className="size-full object-cover" />
+                    ) : (
+                      <UserIcon className="size-5" />
+                    )}
+                  </span>
+                  <div>
+                    <p className="font-medium">{r.userName}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <StarRating value={r.rating} size={14} />
+                      <span className="text-xs text-muted-foreground">{formatDate(r.createdAt)}</span>
+                    </div>
                   </div>
                 </div>
                 {me?.id === r.userId && (

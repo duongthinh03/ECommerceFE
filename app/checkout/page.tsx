@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, AlertCircle, MapPin, Plus, Star, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, MapPin, Plus, Star, Loader2, ImageIcon } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { isLoggedIn } from "@/lib/auth";
 import { formatVND } from "@/lib/format";
@@ -25,6 +25,16 @@ interface OrderResult {
   paymentStatus: string;
   paymentMethod: string;
   paymentQrUrl?: string | null;
+}
+
+interface CartItem {
+  productName: string;
+  variantId: number;
+  sku: string;
+  quantity: number;
+  price: number;
+  lineTotal: number;
+  thumbnail?: string | null;
 }
 
 const paymentOptions = [
@@ -59,6 +69,9 @@ export default function CheckoutPage() {
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [paid, setPaid] = useState(false);
   const [ready, setReady] = useState(false); // đã xác nhận giỏ có hàng → mới cho render form
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [selVariantIds, setSelVariantIds] = useState<number[] | null>(null);
+  const [buyNow, setBuyNow] = useState<{ variantId: number; quantity: number } | null>(null);
 
   // chưa login thì về trang login (checkout cần token) — rồi quay lại đây
   useEffect(() => {
@@ -66,13 +79,28 @@ export default function CheckoutPage() {
       router.push("/login?redirect=/checkout");
       return;
     }
-    // Giỏ rỗng (vd vừa đặt đơn xong rồi reload) → về trang giỏ, không cho ở lại checkout
-    apiClient<{ items: unknown[] }>("/api/cart")
-      .then((res) => {
-        if (!res.data.items || res.data.items.length === 0) router.replace("/cart");
-        else setReady(true);
-      })
-      .catch(() => router.replace("/cart"));
+    // MUA NGAY: món gửi qua sessionStorage → không cần giỏ
+    const rawBuy = sessionStorage.getItem("buy_now");
+    if (rawBuy) {
+      try {
+        const b = JSON.parse(rawBuy) as { variantId: number; quantity: number; productName: string; sku: string; price: number; thumbnail?: string | null };
+        setBuyNow({ variantId: b.variantId, quantity: b.quantity });
+        setItems([{ productName: b.productName, variantId: b.variantId, sku: b.sku, quantity: b.quantity, price: b.price, lineTotal: b.price * b.quantity, thumbnail: b.thumbnail }]);
+        setReady(true);
+      } catch {
+        router.replace("/products");
+      }
+    } else {
+      // Từ giỏ: giỏ rỗng (vd vừa đặt xong rồi reload) → về trang giỏ
+      apiClient<{ items: CartItem[] }>("/api/cart")
+        .then((res) => {
+          if (!res.data.items || res.data.items.length === 0) router.replace("/cart");
+          else { setItems(res.data.items); setReady(true); }
+        })
+        .catch(() => router.replace("/cart"));
+      const raw = sessionStorage.getItem("checkout_variants");
+      setSelVariantIds(raw ? (JSON.parse(raw) as number[]) : null);
+    }
     // nạp sổ địa chỉ: có thì chọn cái mặc định, không có thì mở form nhập mới
     apiClient<Address[]>("/api/addresses")
       .then((res) => {
@@ -140,15 +168,22 @@ export default function CheckoutPage() {
         }
       }
 
-      // các variant đã chọn ở trang giỏ (null = mua hết giỏ)
-      const selRaw = typeof window !== "undefined" ? sessionStorage.getItem("checkout_variants") : null;
-      const selectedVariantIds = selRaw ? (JSON.parse(selRaw) as number[]) : undefined;
+      // Mua ngay → gửi thẳng món; ngược lại → gửi các variant đã chọn ở giỏ (null = cả giỏ)
+      let selectedVariantIds: number[] | undefined;
+      let buyNowItem: { variantId: number; quantity: number } | undefined;
+      if (buyNow) {
+        buyNowItem = { variantId: buyNow.variantId, quantity: buyNow.quantity };
+      } else {
+        const selRaw = sessionStorage.getItem("checkout_variants");
+        selectedVariantIds = selRaw ? (JSON.parse(selRaw) as number[]) : undefined;
+      }
 
       const res = await apiClient<OrderResult>("/api/orders", {
         method: "POST",
-        body: JSON.stringify({ ...ship, note: form.note, paymentMethod, couponCode: couponCode || undefined, selectedVariantIds }),
+        body: JSON.stringify({ ...ship, note: form.note, paymentMethod, couponCode: couponCode || undefined, selectedVariantIds, buyNowItem }),
       });
       sessionStorage.removeItem("checkout_variants");   // dùng xong xóa
+      sessionStorage.removeItem("buy_now");
       setOrder(res.data);
     } catch (e) {
       setError((e as Error).message);
@@ -224,10 +259,15 @@ export default function CheckoutPage() {
     );
   }
 
+  const summaryItems = selVariantIds ? items.filter((i) => selVariantIds.includes(i.variantId)) : items;
+  const subtotal = summaryItems.reduce((s, i) => s + i.lineTotal, 0);
+  const summaryCount = summaryItems.reduce((s, i) => s + i.quantity, 0);
+
   return (
-    <Container className="py-10">
-      <h1 className="mb-6 text-3xl font-bold tracking-tight">Thanh toán</h1>
-      <Card className="mx-auto max-w-2xl">
+    <Container className="py-8">
+      <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">Thanh toán</h1>
+      <div className="grid gap-6 lg:grid-cols-3">
+      <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>Thông tin giao hàng</CardTitle>
         </CardHeader>
@@ -369,6 +409,46 @@ export default function CheckoutPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Tóm tắt đơn — sticky */}
+      <Card className="h-fit p-5 lg:sticky lg:top-24">
+        <h2 className="font-semibold">Đơn hàng ({summaryCount} sản phẩm)</h2>
+        <ul className="mt-3 max-h-72 space-y-3 overflow-auto">
+          {summaryItems.map((i) => (
+            <li key={i.variantId} className="flex gap-3 text-sm">
+              <span className="size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                {i.thumbnail ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={i.thumbnail} alt={i.productName} className="size-full object-cover" />
+                ) : (
+                  <span className="grid size-full place-items-center">
+                    <ImageIcon className="size-5 text-muted-foreground/30" />
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="line-clamp-2 font-medium leading-snug">{i.productName}</span>
+                <span className="text-xs text-muted-foreground">{i.sku} · SL {i.quantity}</span>
+              </span>
+              <span className="shrink-0 font-semibold">{formatVND(i.lineTotal)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex justify-between border-t border-border pt-3 text-sm text-muted-foreground">
+          <span>Tạm tính</span>
+          <span>{formatVND(subtotal)}</span>
+        </div>
+        <div className="mt-1 flex justify-between text-sm text-muted-foreground">
+          <span>Phí vận chuyển</span>
+          <span>Tính khi đặt</span>
+        </div>
+        <div className="mt-2 flex justify-between border-t border-border pt-3 text-lg font-bold">
+          <span>Tổng</span>
+          <span className="text-primary">{formatVND(subtotal)}</span>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">Giảm giá (nếu có) được áp khi đặt hàng.</p>
+      </Card>
+      </div>
     </Container>
   );
 }

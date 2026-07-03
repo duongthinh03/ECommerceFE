@@ -120,7 +120,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           )}
 
           {/* Server fetch xong → truyền variants xuống Client Component để tương tác */}
-          <VariantSelector variants={variants} />
+          <VariantSelector variants={variants} productName={product.name} productThumbnail={product.thumbnail} />
 
           <div className="mt-4">
             <WishlistButton productId={id} />

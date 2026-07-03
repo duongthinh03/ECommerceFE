@@ -42,10 +42,25 @@ export interface Dashboard {
   lowStock: { productId: number; productName: string; sku: string; optionName?: string | null; stock: number }[];
 }
 
+export interface Profile {
+  id: number;
+  email: string;
+  fullName: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  dateOfBirth?: string | null;   // "yyyy-MM-dd"
+  gender?: string | null;        // "Male" | "Female" | "Other"
+  provider?: string | null;
+  emailConfirmed: boolean;
+  is2FAEnabled: boolean;
+  hasPassword: boolean;
+}
+
 export interface Review {
   id: number;
   userId: number;
   userName: string;
+  userAvatarUrl?: string | null;
   rating: number;
   comment?: string | null;
   createdAt: string;

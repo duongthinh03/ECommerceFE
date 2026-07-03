@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package, ChevronDown, ShieldCheck, Heart, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,6 +12,14 @@ import { apiClient } from "@/lib/api";
 import { Category } from "@/lib/types";
 
 const navLinks = [{ href: "/products", label: "Sản phẩm" }];
+
+const accountMenu = [
+  { href: "/account/profile", label: "Thông tin tài khoản", icon: User },
+  { href: "/account/orders", label: "Đơn hàng của tôi", icon: Package },
+  { href: "/account/addresses", label: "Sổ địa chỉ", icon: MapPin },
+  { href: "/account/wishlist", label: "Sản phẩm yêu thích", icon: Heart },
+  { href: "/account/security", label: "Bảo mật (2FA)", icon: ShieldCheck },
+];
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -24,6 +32,10 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [cats, setCats] = useState<Category[]>([]);
   const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [q, setQ] = useState("");
 
   function submitSearch(e: React.FormEvent) {
@@ -37,6 +49,9 @@ export function SiteHeader() {
     setLoggedIn(isLoggedIn());
     setStaff(isStaff());
     setUserName(getUser()?.fullName ?? "");
+    setUserEmail(getUser()?.email ?? "");
+    setUserAvatar(getUser()?.avatarUrl ?? null);
+    setMenuOpen(false);   // đổi route → đóng menu tài khoản
     // cập nhật số lượng giỏ mỗi khi đổi route (vd vừa thêm hàng xong điều hướng)
     apiClient<{ totalQuantity: number }>("/api/cart")
       .then((r) => setCartCount(r.data.totalQuantity ?? 0))
@@ -54,6 +69,16 @@ export function SiteHeader() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // đóng menu tài khoản khi bấm ra ngoài
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
 
   // Đồng bộ ô search theo URL: ở /products hiện từ khoá đang tìm, trang khác thì xoá trống
   useEffect(() => {
@@ -166,48 +191,66 @@ export function SiteHeader() {
 
           {/* Chỉ render trạng thái auth sau khi mounted để khớp server/client */}
           {mounted && loggedIn ? (
-            <>
-              {userName && (
-                <span className="mr-1 hidden text-sm text-muted-foreground lg:inline">
-                  Xin chào, <b className="text-foreground">{userName.trim().split(" ").pop()}</b>
-                </span>
-              )}
-              <Link
-                href="/account/wishlist"
-                aria-label="Yêu thích"
-                className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
-              >
-                <Heart className="size-5" />
-              </Link>
-              <Link
-                href="/account/orders"
-                aria-label="Đơn của tôi"
-                className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
-              >
-                <Package className="size-5" />
-              </Link>
-              <Link
-                href="/account/addresses"
-                aria-label="Sổ địa chỉ"
-                className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
-              >
-                <MapPin className="size-5" />
-              </Link>
-              <Link
-                href="/account/security"
-                aria-label="Bảo mật"
-                className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
-              >
-                <ShieldCheck className="size-5" />
-              </Link>
+            <div className="relative" ref={menuRef}>
               <button
-                onClick={logout}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className={cn(buttonVariants({ variant: "ghost" }), "gap-1.5 px-2")}
               >
-                <LogOut className="size-4" />
-                <span className="hidden sm:inline">Đăng xuất</span>
+                <span className="grid size-7 place-items-center overflow-hidden rounded-full bg-accent text-accent-foreground">
+                  {userAvatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={userAvatar} alt="" className="size-full object-cover" />
+                  ) : (
+                    <User className="size-4" />
+                  )}
+                </span>
+                <span className="hidden max-w-[8rem] truncate text-sm font-medium sm:inline">
+                  {userName ? userName.trim().split(" ").pop() : "Tài khoản"}
+                </span>
+                <ChevronDown className={cn("size-4 transition-transform", menuOpen && "rotate-180")} />
               </button>
-            </>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-xl border border-border bg-background shadow-lift">
+                  <div className="flex items-center gap-3 border-b border-border bg-muted/40 px-4 py-3">
+                    <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-accent text-accent-foreground">
+                      {userAvatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={userAvatar} alt="" className="size-full object-cover" />
+                      ) : (
+                        <User className="size-5" />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{userName || "Tài khoản"}</p>
+                      {userEmail && <p className="truncate text-xs text-muted-foreground">{userEmail}</p>}
+                    </div>
+                  </div>
+                  <div className="p-1">
+                    {accountMenu.map((m) => (
+                      <Link
+                        key={m.href}
+                        href={m.href}
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <m.icon className="size-4 text-muted-foreground" /> {m.label}
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="border-t border-border p-1">
+                    <button
+                      onClick={() => { setMenuOpen(false); logout(); }}
+                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+                    >
+                      <LogOut className="size-4" /> Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               href={
