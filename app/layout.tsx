@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { WishlistProvider } from "@/lib/wishlist-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,9 +36,11 @@ export default function RootLayout({
     >
       {/* suppressHydrationWarning: extension trình duyệt (Bitdefender...) chèn attr vào body → bỏ qua cảnh báo mismatch */}
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-background font-sans text-foreground">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
+        <WishlistProvider>
+          <SiteHeader />
+          <main className="flex-1">{children}</main>
+          <SiteFooter />
+        </WishlistProvider>
       </body>
     </html>
   );

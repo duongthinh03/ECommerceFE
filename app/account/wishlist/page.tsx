@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Loader2, Heart, X } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { isLoggedIn } from "@/lib/auth";
+import { useWishlist } from "@/lib/wishlist-context";
 import { Product } from "@/lib/types";
 import { Container } from "@/components/ui/container";
 import { ProductCard } from "@/components/product-card";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 export default function WishlistPage() {
   const router = useRouter();
+  const { toggle } = useWishlist();
   const [items, setItems] = useState<Product[] | null>(null);
 
   useEffect(() => {
@@ -27,10 +29,9 @@ export default function WishlistPage() {
   async function remove(productId: number) {
     setItems((cur) => cur?.filter((p) => p.id !== productId) ?? null); // optimistic
     try {
-      await apiClient(`/api/wishlist/${productId}`, { method: "DELETE" });
+      await toggle(productId); // đồng bộ luôn với context (tim ở nơi khác)
     } catch {
-      // lỗi thì tải lại cho đồng bộ
-      apiClient<Product[]>("/api/wishlist").then((r) => setItems(r.data)).catch(() => {});
+      apiClient<Product[]>("/api/wishlist").then((r) => setItems(r.data)).catch(() => {}); // lỗi → tải lại
     }
   }
 
@@ -64,7 +65,7 @@ export default function WishlistPage() {
               >
                 <X className="size-4" />
               </button>
-              <ProductCard product={p} />
+              <ProductCard product={p} showWishlist={false} />
             </div>
           ))}
         </div>

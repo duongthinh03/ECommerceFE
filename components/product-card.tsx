@@ -4,13 +4,15 @@ import { Product } from "@/lib/types";
 import { formatVND } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/star-rating";
+import { WishlistHeart } from "@/components/wishlist-heart";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product, showWishlist = true }: { product: Product; showWishlist?: boolean }) {
   return (
     <Link href={`/products/${product.id}`} className="group block">
       <article className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-lift">
         {/* Ảnh: dùng thumbnail nếu có, không thì placeholder */}
         <div className="relative aspect-square overflow-hidden bg-muted">
+          {showWishlist && <WishlistHeart productId={product.id} />}
           {product.thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

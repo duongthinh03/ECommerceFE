@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package, ChevronDown, ShieldCheck, Heart } from "lucide-react";
+import { ShoppingCart, Store, User, LogOut, MapPin, LayoutDashboard, Package, ChevronDown, ShieldCheck, Heart, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -24,6 +24,13 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [cats, setCats] = useState<Category[]>([]);
   const [userName, setUserName] = useState("");
+  const [q, setQ] = useState("");
+
+  function submitSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const term = q.trim();
+    router.push(term ? `/products?q=${encodeURIComponent(term)}` : "/products");
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -47,6 +54,13 @@ export function SiteHeader() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Đồng bộ ô search theo URL: ở /products hiện từ khoá đang tìm, trang khác thì xoá trống
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const term = new URLSearchParams(window.location.search).get("q") ?? "";
+    setQ(pathname === "/products" ? term : "");
+  }, [pathname]);
 
   async function logout() {
     // gọi BE để xóa cookie httpOnly (JS không tự xóa được), rồi xóa dấu vết client
@@ -123,6 +137,18 @@ export function SiteHeader() {
             </Link>
           )}
         </nav>
+
+        {/* Ô tìm kiếm — điều hướng sang /products?q= */}
+        <form onSubmit={submitSearch} className="relative hidden max-w-xs flex-1 md:block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Tìm sản phẩm..."
+            aria-label="Tìm sản phẩm"
+            className="h-9 w-full rounded-full border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </form>
 
         <div className="flex items-center gap-2">
           <Link
