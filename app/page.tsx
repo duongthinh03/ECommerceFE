@@ -5,12 +5,13 @@ import { Product, Paged, Category } from "@/lib/types";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { ProductCard } from "@/components/product-card";
+import { ProductFeed } from "@/components/product-feed";
 import { cn } from "@/lib/utils";
 
-// Lấy vài SP nổi bật cho trang chủ; lỗi API thì trang chủ vẫn hiển thị (không hard-fail).
+// SP "nổi bật" = BÁN CHẠY NHẤT (sort=best_selling); lỗi API thì trang chủ vẫn hiển thị (không hard-fail).
 async function getFeatured(): Promise<Product[]> {
   try {
-    const res = await apiGet<Paged<Product>>("/api/products?pageSize=8");
+    const res = await apiGet<Paged<Product>>("/api/products?sort=best_selling&pageSize=8");
     return res.data.items;
   } catch {
     return [];
@@ -26,6 +27,17 @@ async function getCategories(): Promise<Category[]> {
   }
 }
 
+// Feed "Sản phẩm mới": SP MỚI NHẤT (trang 1, sort mặc định = mới nhất) → SP vừa thêm hiện ngay đây.
+// Khác trục với "Nổi bật" (bán chạy) nên không còn phải né trùng. Trang sau do ProductFeed tải client.
+async function getNewestFeed(): Promise<Paged<Product> | null> {
+  try {
+    const res = await apiGet<Paged<Product>>("/api/products?pageSize=12&page=1");
+    return res.data;
+  } catch {
+    return null;
+  }
+}
+
 const valueProps = [
   { icon: Boxes, title: "Đa ngành hàng", desc: "Vợt, giày, sách… tất cả tại một nơi." },
   { icon: Truck, title: "Giao hàng nhanh", desc: "Ship toàn quốc, thanh toán khi nhận (COD)." },
@@ -33,7 +45,11 @@ const valueProps = [
 ];
 
 export default async function Home() {
-  const [featured, categories] = await Promise.all([getFeatured(), getCategories()]);
+  const [featured, categories, newest] = await Promise.all([
+    getFeatured(),
+    getCategories(),
+    getNewestFeed(),
+  ]);
 
   return (
     <>
@@ -124,7 +140,7 @@ export default async function Home() {
           <div className="mb-8 flex items-end justify-between">
             <div>
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Sản phẩm nổi bật</h2>
-              <p className="mt-1 text-muted-foreground">Một vài lựa chọn dành cho bạn</p>
+              <p className="mt-1 text-muted-foreground">Được mua nhiều nhất</p>
             </div>
             <Link
               href="/products"
@@ -153,6 +169,19 @@ export default async function Home() {
           )}
         </Container>
       </section>
+
+      {/* Sản phẩm mới — feed load-more (kiểu Shopee) */}
+      {newest && newest.items.length > 0 && (
+        <section className="border-t border-border bg-muted/20">
+          <Container className="py-16">
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Sản phẩm mới</h2>
+              <p className="mt-1 text-muted-foreground">Khám phá thêm hàng vừa lên kệ</p>
+            </div>
+            <ProductFeed initial={newest} />
+          </Container>
+        </section>
+      )}
     </>
   );
 }

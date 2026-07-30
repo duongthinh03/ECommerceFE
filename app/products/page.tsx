@@ -1,12 +1,9 @@
-import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { Product, Category, Paged } from "@/lib/types";
 import { Container } from "@/components/ui/container";
 import { ProductCard } from "@/components/product-card";
 import { ProductFilters } from "@/components/product-filters";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/pagination";
 
 export const metadata = { title: "Sản phẩm" };
 
@@ -74,29 +71,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             ))}
           </div>
 
-          {paged.totalPages > 1 && (
-            <div className="mt-8 flex items-center justify-center gap-3">
-              {paged.hasPrevious ? (
-                <Link href={pageLink(page - 1)} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1")}>
-                  <ChevronLeft className="size-4" /> Trước
-                </Link>
-              ) : (
-                <span className={cn(buttonVariants({ variant: "outline", size: "sm" }), "pointer-events-none gap-1 opacity-40")}>
-                  <ChevronLeft className="size-4" /> Trước
-                </span>
-              )}
-              <span className="text-sm text-muted-foreground">Trang {page}/{paged.totalPages}</span>
-              {paged.hasNext ? (
-                <Link href={pageLink(page + 1)} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1")}>
-                  Sau <ChevronRight className="size-4" />
-                </Link>
-              ) : (
-                <span className={cn(buttonVariants({ variant: "outline", size: "sm" }), "pointer-events-none gap-1 opacity-40")}>
-                  Sau <ChevronRight className="size-4" />
-                </span>
-              )}
-            </div>
-          )}
+          <Pagination page={page} totalPages={paged.totalPages} hrefFor={pageLink} />
         </>
       )}
     </Container>
